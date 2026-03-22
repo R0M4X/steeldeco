@@ -13,7 +13,7 @@
     <style>
         body{background:#fafaba;-webkit-tap-highlight-color:transparent}
         /* El header de layout.js tiene ~68px — forzamos padding explícito */
-        main{padding-top:80px;padding-bottom:100px}
+        main{padding-top:88px;padding-bottom:100px}
         .hide-scroll::-webkit-scrollbar{display:none}.hide-scroll{-ms-overflow-style:none;scrollbar-width:none}
         .filter-btn{transition:all .2s;border:2px solid transparent}
         .filter-btn.active{background:#064e3b;color:white;box-shadow:0 4px 12px rgba(6,78,59,.3)}
@@ -40,14 +40,16 @@
         <p class="text-sm text-slate-400 mt-0.5">Profesionales verificados de Steel &amp; Deco</p>
     </div>
 
-    <!-- CTA para no-instaladores — debajo del título, sin superposición -->
-    <div id="installerCTA" class="hidden mb-4 bg-brand-900 text-white rounded-2xl p-4 flex items-center gap-3">
-        <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🔧</div>
-        <div class="flex-1 min-w-0">
-            <p class="font-bold text-sm leading-tight">¿Sos instalador?</p>
-            <p class="text-xs text-brand-100 mt-0.5">Completá el formulario para aparecer en el directorio</p>
+    <!-- CTA para no-instaladores -->
+    <div id="installerCTA" class="hidden mb-4">
+        <div class="bg-gradient-to-r from-brand-900 to-brand-700 text-white rounded-2xl p-4 flex items-center gap-3 shadow-lg shadow-brand-900/20">
+            <div class="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🔧</div>
+            <div class="flex-1 min-w-0">
+                <p class="font-extrabold text-sm leading-tight">¿Sos instalador?</p>
+                <p class="text-[11px] text-emerald-200 mt-0.5">Registrate gratis y aparecé en el directorio</p>
+            </div>
+            <button onclick="window.openLogin?.()" class="flex-shrink-0 bg-white text-brand-900 text-xs font-extrabold px-3 py-2 rounded-xl active:scale-95 transition-transform shadow-sm">Registrarme</button>
         </div>
-        <a href="https://forms.gle/ySkucYWySq6apYr26" target="_blank" class="flex-shrink-0 bg-white text-brand-900 text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform">Formulario</a>
     </div>
 
     <!-- Filtros -->
