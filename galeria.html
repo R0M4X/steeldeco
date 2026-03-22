@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <title>Steel & Deco - Galería</title>
+
+    <!-- Preconnect: reduce latencia -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Fuentes: solo pesos usados + font-display swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome: carga diferida (no bloquea render) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: { 50:'#f2fbf5', 100:'#e0f7e8', 500:'#10b981', 700:'#047857', 900:'#064e3b' }
+                    }
+                }
+            }
+        }
+    </script>
+
+
+
+    <style>
+        body { background-color: #FAFABA; -webkit-tap-highlight-color: transparent; }
+        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.05); }
+        .slide-in-bottom { animation: slideUp 0.3s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes slideUp { to { transform: translateY(0); opacity: 1; } }
+        .gallery-image:hover { transform: scale(1.02); }
+        .gallery-image { transition: transform 0.3s ease; }
+    </style>
+</head>
+<body class="pb-24 text-slate-600">
+
+    <main class="mt-24 px-5 max-w-3xl mx-auto">
+        <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">
+                Elige un modelo para ver
+            </label>
+            <div class="relative">
+                <select id="galeriaProductSelector" onchange="cargarGaleria()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none">
+                    <option value="">-- Seleccionar Producto --</option>
+                </select>
+                <div class="absolute right-4 top-3.5 text-brand-600 pointer-events-none">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="galeriaContent" class="space-y-6">
+            <div class="text-center py-12 opacity-50">
+                <i class="fa-solid fa-image text-6xl text-slate-300 mb-4"></i>
+                <p>Selecciona un producto arriba para ver ejemplos de instalación.</p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="layout.js"></script>
+    <script src="products.js"></script>
+
+    <script>
+         window.onload = () => {
+            const selector = document.getElementById('galeriaProductSelector');
+            // Rellenar select
+            productosDB.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.text = p.nombre;
+                selector.appendChild(option);
+            });
+        };
+
+        function cargarGaleria() {
+            const id = document.getElementById('galeriaProductSelector').value;
+            const container = document.getElementById('galeriaContent');
+            
+            if(!id) return;
+
+            const producto = productosDB.find(p => p.id === id);
+            
+            // Usamos la nueva propiedad 'galeria' y si está vacía, fallback a la imagen principal
+            const imagenes = (producto.galeria && producto.galeria.length > 0) 
+                             ? producto.galeria 
+                             : [producto.imagen];
+            
+            // Crear HTML de las imágenes disponibles
+            container.innerHTML = imagenes.map((img, i) => `
+                <div class="bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100 slide-in-bottom" style="animation-delay: ${i * 0.15}s">
+                    <div class="relative h-56 overflow-hidden">
+                        <img src="${img}" class="w-full h-full object-cover gallery-image">
+                        <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand-700 shadow-sm">
+                            Vista ${i + 1}
+                        </div>
+                    </div>
+                    <div class="p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-xl text-brand-600">
+                             <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800">${producto.nombre}</h3>
+                            <p class="text-xs text-slate-400 line-clamp-1">${producto.acabado}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

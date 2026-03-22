@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <title>Steel & Deco - Instaladores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['"Plus Jakarta Sans"','sans-serif']},colors:{brand:{50:'#f2fbf5',100:'#e0f7e8',500:'#10b981',700:'#047857',900:'#064e3b'}}}}}</script>
+    <style>
+        body{background:#fafaba;-webkit-tap-highlight-color:transparent}
+        /* El header de layout.js tiene ~68px — forzamos padding explícito */
+        main{padding-top:80px;padding-bottom:100px}
+        .hide-scroll::-webkit-scrollbar{display:none}.hide-scroll{-ms-overflow-style:none;scrollbar-width:none}
+        .filter-btn{transition:all .2s;border:2px solid transparent}
+        .filter-btn.active{background:#064e3b;color:white;box-shadow:0 4px 12px rgba(6,78,59,.3)}
+        .filter-btn:not(.active){background:white;border-color:#e2e8f0;color:#475569}
+        .card-premium{background:linear-gradient(135deg,#064e3b 0%,#047857 100%);color:white;position:relative;overflow:hidden}
+        .card-premium::before{content:'';position:absolute;top:-40px;right:-40px;width:100px;height:100px;background:rgba(255,255,255,.06);border-radius:50%}
+        .card-standard{background:white}
+        .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s}
+        .sheet-overlay.open{opacity:1;pointer-events:auto}
+        .bottom-sheet{position:fixed;bottom:0;left:0;right:0;background:white;border-radius:24px 24px 0 0;padding:20px 20px 40px;transform:translateY(100%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:201;max-height:85vh;overflow-y:auto}
+        .sheet-overlay.open .bottom-sheet{transform:translateY(0)}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f8fafc 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .stars{color:#f59e0b;font-size:12px;letter-spacing:1px}
+        @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .slide-in{animation:slideUp .3s ease both}
+    </style>
+</head>
+<body>
+<main class="px-4 py-6">
+
+    <div class="mb-4">
+        <h2 class="text-xl font-extrabold text-slate-800">Instaladores</h2>
+        <p class="text-sm text-slate-400 mt-0.5">Profesionales verificados de Steel &amp; Deco</p>
+    </div>
+
+    <!-- CTA para no-instaladores — debajo del título, sin superposición -->
+    <div id="installerCTA" class="hidden mb-4 bg-brand-900 text-white rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🔧</div>
+        <div class="flex-1 min-w-0">
+            <p class="font-bold text-sm leading-tight">¿Sos instalador?</p>
+            <p class="text-xs text-brand-100 mt-0.5">Completá el formulario para aparecer en el directorio</p>
+        </div>
+        <a href="https://forms.gle/ySkucYWySq6apYr26" target="_blank" class="flex-shrink-0 bg-white text-brand-900 text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform">Formulario</a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="flex gap-2 mb-4 hide-scroll overflow-x-auto pb-1">
+        <button id="filterTodos" onclick="setFilter('todos')" class="filter-btn active flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold bg-brand-900 text-white">
+            <i class="fa-solid fa-users mr-1"></i> Todos
+        </button>
+        <button id="filterZona" onclick="setFilter('zona')" class="filter-btn flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600">
+            <i class="fa-solid fa-location-dot mr-1"></i> Mi zona
+        </button>
+        <button id="filterDestacados" onclick="setFilter('destacados')" class="filter-btn flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600">
+            <i class="fa-solid fa-star mr-1"></i> Destacados
+        </button>
+    </div>
+
+    <!-- Geo bar -->
+    <div id="geoBar" class="hidden mb-4 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+        <i class="fa-solid fa-location-dot text-blue-500 text-sm flex-shrink-0"></i>
+        <p class="text-xs text-blue-700 font-semibold flex-1" id="geoStatus">Obteniendo ubicación...</p>
+        <button onclick="setFilter('todos')" class="text-[10px] text-blue-500 font-bold flex-shrink-0">Ver todos</button>
+    </div>
+
+    <!-- Lista -->
+    <div id="installerList">
+        <div id="skeletons" class="space-y-3">
+            <div class="skeleton h-32 w-full"></div>
+            <div class="skeleton h-28 w-full"></div>
+            <div class="skeleton h-28 w-full"></div>
+        </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="hidden text-center py-12">
+        <div class="text-5xl mb-3">📍</div>
+        <p class="font-bold text-slate-700 text-base">No hay instaladores en tu zona</p>
+        <p class="text-sm text-slate-400 mt-1 mb-4">Mostrando todos los disponibles</p>
+        <button onclick="setFilter('todos')" class="bg-brand-900 text-white px-6 py-2.5 rounded-full text-sm font-bold">Ver todos</button>
+    </div>
+</main>
+
+<!-- Bottom sheet -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+        <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+        <div class="flex items-start gap-4 mb-5">
+            <div id="sheetAvatar" class="w-16 h-16 rounded-2xl flex-shrink-0 bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-700 overflow-hidden"></div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-extrabold text-slate-800 text-lg leading-tight" id="sheetName">—</h3>
+                    <span id="sheetBadge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full"></span>
+                </div>
+                <div class="stars mt-1" id="sheetStars">☆☆☆☆☆</div>
+                <p class="text-xs text-slate-400 mt-0.5" id="sheetReviews"></p>
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4" id="sheetChips"></div>
+        <div id="sheetDistWrap" class="hidden mb-4">
+            <span class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                <i class="fa-solid fa-location-dot text-[11px]"></i> <span id="sheetDist"></span>
+            </span>
+        </div>
+        <div id="sheetAboutWrap" class="hidden mb-5">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Sobre mí</h4>
+            <p class="text-sm text-slate-600 leading-relaxed" id="sheetAbout"></p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <button id="sheetCallBtn" class="flex items-center justify-center gap-2 bg-brand-900 text-white py-3.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform"><i class="fa-solid fa-phone"></i> Llamar</button>
+            <button id="sheetWaBtn" class="flex items-center justify-center gap-2 bg-[#25d366] text-white py-3.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform"><i class="fa-brands fa-whatsapp text-lg"></i> WhatsApp</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="layout.js"></script>
+<script type="module">
+import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const cfg = {apiKey:"AIzaSyBzSk9LTu8ifjJBk0yYzO4_IMFub2GGVDw",authDomain:"appsteel-a1e3a.firebaseapp.com",projectId:"appsteel-a1e3a",storageBucket:"appsteel-a1e3a.appspot.com",messagingSenderId:"907112975827",appId:"1:907112975827:web:93ab290d891bec55f1f326"};
+const app = getApps().length ? getApps()[0] : initializeApp(cfg);
+const db  = getFirestore(app);
+const auth = getAuth(app);
+
+let allInstallers = [], userCoords = null;
+
+// ── GEO ──────────────────────────────────────────────────────────────────────
+function haversine(lat1,lon1,lat2,lon2){
+    const R=6371,dL=(lat2-lat1)*Math.PI/180,dl=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dl/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function getGeo(){
+    return new Promise((res,rej)=>{
+        if(!navigator.geolocation){rej("no-support");return;}
+        navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),e=>rej(e.code),{timeout:8000,maximumAge:300000});
+    });
+}
+
+// ── CARGAR ────────────────────────────────────────────────────────────────────
+// MODO ABIERTO: muestra todos los usuarios registrados como instaladores
+// (isInstaller:true), sin requerir verificación manual por ahora.
+// Para reactivar la verificación, cambiar la query a where("installerStatus","==","verified")
+async function loadInstallers(){
+    try{
+        const q=query(collection(db,"users"),where("isInstaller","==",true));
+        const snap=await getDocs(q);
+        allInstallers=snap.docs.map(d=>({id:d.id,...d.data()}));
+        allInstallers.sort((a,b)=>{
+            if(a.isRecommended&&!b.isRecommended)return -1;
+            if(!a.isRecommended&&b.isRecommended)return 1;
+            return(a.displayName||"").localeCompare(b.displayName||"");
+        });
+    }catch(e){console.error(e);allInstallers=[];}
+    document.getElementById("skeletons")?.remove();
+    renderList(allInstallers);
+}
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+window.setFilter = async (filter) => {
+    // Resetear todos los botones
+    document.getElementById("filterTodos").classList.toggle("active", filter==="todos");
+    document.getElementById("filterZona").classList.toggle("active", filter==="zona");
+    document.getElementById("filterDestacados").classList.toggle("active", filter==="destacados");
+
+    if(filter==="zona"){
+        document.getElementById("geoBar").classList.remove("hidden");
+        document.getElementById("geoStatus").textContent="Obteniendo tu ubicación...";
+        try{
+            userCoords=await getGeo();
+            const withDist=allInstallers.filter(i=>i.lat&&i.lng).map(i=>({...i,distKm:haversine(userCoords.lat,userCoords.lng,i.lat,i.lng)})).sort((a,b)=>a.distKm-b.distKm);
+            const nearby=withDist.filter(i=>i.distKm<=50);
+            document.getElementById("geoStatus").textContent=nearby.length>0?`📍 ${nearby.length} instalador${nearby.length>1?"es":""} cerca tuyo (hasta 50km)`:"No se encontraron instaladores en 50km";
+            if(nearby.length===0){
+                // Sin coordenadas: mostrar todos igual con aviso
+                document.getElementById("geoStatus").textContent="📍 Instaladores disponibles (sin distancia exacta aún)";
+                document.getElementById("emptyState").classList.add("hidden");
+                renderList(allInstallers,false);
+            }
+            else{document.getElementById("emptyState").classList.add("hidden");renderList(nearby,true);}
+        }catch(err){
+            const msgs={1:"Permiso de ubicación denegado.",2:"No se pudo obtener la ubicación.",3:"Tiempo de espera agotado.","no-support":"Tu dispositivo no soporta geolocalización."};
+            document.getElementById("geoStatus").textContent=msgs[err]||"Error de geolocalización.";
+            renderList(allInstallers);
+        }
+        return;
+    }
+    document.getElementById("geoBar").classList.add("hidden");
+    document.getElementById("emptyState").classList.add("hidden");
+    renderList(filter==="destacados"?allInstallers.filter(i=>i.isRecommended):allInstallers);
+};
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function stars(r){const f=Math.floor(r),h=r%1>=.5,e=5-f-(h?1:0);return"★".repeat(f)+(h?"½":"")+"☆".repeat(e);}
+
+function renderList(list,showDist=false){
+    const el=document.getElementById("installerList");
+    if(!list||list.length===0){el.innerHTML="";return;}
+    el.innerHTML=list.map((inst,i)=>{
+        const av=inst.photoURL?`<img src="${inst.photoURL}" class="w-full h-full object-cover">`:`<span class="text-xl font-bold">${(inst.displayName||"?")[0].toUpperCase()}</span>`;
+        const dist=showDist&&inst.distKm!=null?`<div class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5 text-[10px] font-bold mt-1.5"><i class="fa-solid fa-location-dot text-[9px]"></i>${inst.distKm<1?"< 1 km":Math.round(inst.distKm)+" km"}</div>`:"";
+        const zone=inst.zone?`<span class="text-[11px] flex items-center gap-1"><i class="fa-solid fa-location-dot text-[10px]"></i>${inst.zone}</span>`:"";
+        const spec=inst.specialty?`<span class="text-[11px] flex items-center gap-1"><i class="fa-solid fa-screwdriver-wrench text-[10px]"></i>${inst.specialty}</span>`:"";
+        if(inst.isRecommended){return `
+        <div class="card-premium rounded-2xl p-4 mb-3 cursor-pointer slide-in active:scale-[.98] transition-transform" style="animation-delay:${i*.05}s" onclick="openSheet('${inst.id}')">
+            <div class="flex items-start gap-3">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-white/20 flex items-center justify-center flex-shrink-0 text-white">${av}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-extrabold text-base">${inst.displayName||"Instalador"}</span>
+                        <span class="text-[10px] font-bold bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full">⭐ Destacado</span>
+                    </div>
+                    <div class="stars mt-1">${stars(inst.rating||0)}</div>
+                    <div class="flex flex-col gap-0.5 mt-1 text-emerald-200">${zone}${spec}</div>
+                    ${dist}
+                </div>
+            </div>
+            <div class="flex gap-2 mt-3">
+                ${inst.phone?`<button onclick="event.stopPropagation();callPhone('${inst.phone}')" class="flex-1 bg-white/15 text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"><i class="fa-solid fa-phone"></i> Llamar</button>`:""}
+                ${(inst.whatsapp||inst.phone)?`<button onclick="event.stopPropagation();openWa('${inst.whatsapp||inst.phone}','${inst.displayName||""}')" class="flex-1 bg-[#25d366] text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>`:""}
+            </div>
+        </div>`;}
+        return `
+        <div class="card-standard rounded-2xl p-4 mb-3 shadow-sm border border-slate-100 cursor-pointer slide-in active:scale-[.98] transition-transform" style="animation-delay:${i*.05}s" onclick="openSheet('${inst.id}')">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 flex items-center justify-center flex-shrink-0 text-brand-700">${av}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-slate-800 text-sm">${inst.displayName||"Instalador"}</span>
+                        <span class="text-[10px] font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">🔧 Instalador</span>
+                    </div>
+                    <div class="stars text-[11px] mt-0.5">${stars(inst.rating||0)}</div>
+                    <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-slate-500">${zone}${spec}</div>
+                    ${dist}
+                </div>
+                <i class="fa-solid fa-chevron-right text-slate-300 flex-shrink-0"></i>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+// ── SHEET ─────────────────────────────────────────────────────────────────────
+window.openSheet = (uid) => {
+    const inst=allInstallers.find(i=>i.id===uid);if(!inst)return;
+    const av=document.getElementById("sheetAvatar");
+    av.innerHTML=inst.photoURL?`<img src="${inst.photoURL}" class="w-full h-full object-cover">`:(inst.displayName||"?")[0].toUpperCase();
+    document.getElementById("sheetName").textContent=inst.displayName||"Instalador";
+    document.getElementById("sheetStars").innerHTML=stars(inst.rating||0);
+    document.getElementById("sheetReviews").textContent=inst.reviews?`${inst.reviews} reseñas`:"";
+    const badge=document.getElementById("sheetBadge");
+    if(inst.isRecommended){badge.textContent="⭐ Destacado";badge.className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700";}
+    else{badge.textContent="🔧 Instalador";badge.className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700";}
+    badge.classList.remove("hidden");
+    const chips=[];
+    if(inst.zone)chips.push(`<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full"><i class="fa-solid fa-location-dot text-[11px]"></i>${inst.zone}</span>`);
+    if(inst.specialty)chips.push(`<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full"><i class="fa-solid fa-screwdriver-wrench text-[11px]"></i>${inst.specialty}</span>`);
+    if(inst.experience)chips.push(`<span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full"><i class="fa-solid fa-clock text-[11px]"></i>${inst.experience}</span>`);
+    document.getElementById("sheetChips").innerHTML=chips.join("");
+    const aw=document.getElementById("sheetAboutWrap");
+    if(inst.about){document.getElementById("sheetAbout").textContent=inst.about;aw.classList.remove("hidden");}else aw.classList.add("hidden");
+    const dw=document.getElementById("sheetDistWrap");
+    if(inst.distKm!=null){document.getElementById("sheetDist").textContent=inst.distKm<1?"Menos de 1 km":Math.round(inst.distKm)+" km de distancia";dw.classList.remove("hidden");}else dw.classList.add("hidden");
+    const phone=inst.phone||inst.whatsapp||"";
+    document.getElementById("sheetCallBtn").onclick=()=>callPhone(phone);
+    document.getElementById("sheetWaBtn").onclick=()=>openWa(inst.whatsapp||phone,inst.displayName||"");
+    if(!phone){document.getElementById("sheetCallBtn").classList.add("opacity-50");document.getElementById("sheetWaBtn").classList.add("opacity-50");}
+    document.getElementById("sheetOverlay").classList.add("open");
+};
+window.closeSheet=()=>document.getElementById("sheetOverlay").classList.remove("open");
+window.callPhone=phone=>window.location.href=`tel:${phone.replace(/\D/g,"")}`;
+window.openWa=(phone,name)=>{const clean=phone.replace(/\D/g,"");const msg=encodeURIComponent(`Hola ${name}, te contacto desde la app Steel & Deco. ¿Podés darme un presupuesto?`);window.open(`https://wa.me/${clean}?text=${msg}`,"_blank");};
+
+// ── CTA INSTALADOR — visible solo para no logueados ──────────────────────────
+onAuthStateChanged(auth, user => {
+    document.getElementById("installerCTA").classList.toggle("hidden", !!user);
+});
+
+loadInstallers();
+</script>
+</body>
+</html>

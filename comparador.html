@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <title>Steel & Deco - Comparador</title>
+
+    <!-- Preconnect: reduce latencia -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Fuentes: solo pesos usados + font-display swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome: carga diferida (no bloquea render) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: { 50:'#f2fbf5', 100:'#e0f7e8', 500:'#10b981', 700:'#047857', 900:'#064e3b' }
+                    }
+                }
+            }
+        }
+    </script>
+
+
+
+    <style>
+        body { background-color: #FAFABA; -webkit-tap-highlight-color: transparent; }
+        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.05); }
+        .vs-badge {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            z-index: 10; background: #064e3b; color: white; font-weight: bold;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; border: 4px solid #FAFABA;
+        }
+    </style>
+</head>
+<body class="pb-24 text-slate-600">
+
+    <main class="mt-24 px-4 max-w-4xl mx-auto">
+        
+        <div class="bg-white rounded-3xl p-5 shadow-xl shadow-slate-200/50 border border-slate-100 mb-6 relative">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs font-bold text-brand-600 uppercase tracking-wider mb-2 block">Producto A</label>
+                    <div class="relative">
+                        <select id="sel1" onchange="compare()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-3.5 text-slate-400"></i>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex items-center justify-center">
+                    <span class="bg-brand-900 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold">VS</span>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 block">Producto B</label>
+                    <div class="relative">
+                        <select id="sel2" onchange="compare()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-3.5 text-slate-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="comparisonContainer" class="hidden relative">
+            <div class="md:hidden vs-badge">VS</div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div id="cardA" class="bg-white rounded-3xl overflow-hidden shadow-lg border-2 border-brand-500/50">
+                    </div>
+
+                <div id="cardB" class="bg-white rounded-3xl overflow-hidden shadow-lg border-2 border-blue-500/50">
+                    </div>
+            </div>
+        </div>
+
+        <div id="emptyState" class="text-center py-10 opacity-60">
+            <i class="fa-solid fa-arrow-up text-4xl text-brand-200 animate-bounce mb-2"></i>
+            <p class="font-medium">Selecciona dos productos para comenzar la batalla.</p>
+        </div>
+
+    </main>
+
+    <script type="module" src="layout.js"></script>
+    <script src="products.js"></script>
+    
+    <script>
+
+        window.onload = () => {
+            const fill = (sel) => productosDB.forEach(p => {
+                let opt = document.createElement('option');
+                opt.value = p.id;
+                opt.text = p.nombre;
+                sel.appendChild(opt);
+            });
+            fill(document.getElementById('sel1'));
+            fill(document.getElementById('sel2'));
+        };
+
+        function compare() {
+            const id1 = document.getElementById('sel1').value;
+            const id2 = document.getElementById('sel2').value;
+            
+            if(id1 && id2) {
+                document.getElementById('emptyState').classList.add('hidden');
+                document.getElementById('comparisonContainer').classList.remove('hidden');
+                
+                renderCard(id1, 'cardA');
+                renderCard(id2, 'cardB');
+            }
+        }
+
+        function renderCard(id, elementId) {
+            const p = productosDB.find(x => x.id === id);
+            
+            // Icono genérico ya que la nueva DB no tiene iconos individuales
+            const iconHtml = '<i class="fa-solid fa-layer-group text-brand-600"></i>';
+
+            const html = `
+                <div class="h-40 bg-slate-100 relative">
+                    <img src="${p.imagen}" class="w-full h-full object-cover">
+                    <div class="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-1 rounded text-lg shadow">${iconHtml}</div>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-slate-800 text-lg leading-tight mb-1">${p.nombre}</h3>
+                    <p class="text-xs text-slate-500 mb-4 font-mono">REF: ${p.ref}</p>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-xs text-slate-400 uppercase font-bold">Tamaño</span>
+                            <span class="font-bold text-slate-700 text-sm">${p.size}</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-xs text-slate-400 uppercase font-bold">Espesor</span>
+                            <span class="font-bold text-slate-700">${p.thickness_mm} mm</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span class="text-xs text-slate-400 uppercase font-bold">Densidad</span>
+                            <span class="font-bold text-brand-600">${p.density_kg_m3} kg/m³</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Aplicaciones</span>
+                            <div class="flex flex-wrap gap-1">
+                                ${p.aplicaciones.map(l => `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">${l}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="pt-2">
+                            <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Acabados Disponibles</span>
+                             <p class="text-[11px] text-slate-500 leading-tight">${p.surfaceOptions.join(', ')}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById(elementId).innerHTML = html;
+        }
+    </script>
+</body>
+</html>

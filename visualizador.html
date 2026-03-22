@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <title>Steel & Deco - IA Visualizador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['"Plus Jakarta Sans"','sans-serif']},colors:{brand:{50:'#f2fbf5',100:'#e0f7e8',300:'#6ee7b7',500:'#10b981',600:'#059669',700:'#047857',900:'#064e3b'}}}}}</script>
+    <style>
+        body{background:#fafaba;-webkit-tap-highlight-color:transparent}
+        .hide-scroll::-webkit-scrollbar{display:none}.hide-scroll{-ms-overflow-style:none;scrollbar-width:none}
+        input[type="file"]{display:none}
+
+        .upload-zone{border:2.5px dashed #cbd5e1;border-radius:20px;transition:all .25s;background:white}
+        .upload-zone.has-image{border-style:solid;border-color:#10b981}
+
+        .surface-btn{border:2px solid #e2e8f0;border-radius:12px;background:white;transition:all .2s;cursor:pointer}
+        .surface-btn.active{border-color:#10b981;background:#f0fdf4}
+
+        .placa-chip{flex-shrink:0;border:2.5px solid transparent;border-radius:14px;overflow:hidden;cursor:pointer;transition:all .18s;background:white;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+        .placa-chip:active{transform:scale(.95)}
+        .placa-chip.active{border-color:#10b981;box-shadow:0 4px 14px rgba(16,185,129,.25)}
+
+        .gen-overlay{position:absolute;inset:0;background:rgba(6,78,59,.88);backdrop-filter:blur(2px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border-radius:20px;z-index:10}
+        .gen-ring{width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#6ee7b7;animation:spin 1s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .prog-bar{height:3px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden;width:160px}
+        .prog-fill{height:100%;background:#6ee7b7;border-radius:10px;width:0%;transition:width .4s ease}
+
+        .compare-wrap{position:relative;overflow:hidden;border-radius:20px;cursor:col-resize;user-select:none}
+        .compare-wrap img{width:100%;display:block}
+        .compare-overlay{position:absolute;top:0;left:0;height:100%;overflow:hidden}
+        .compare-overlay img{width:100vw;max-width:600px}
+        .compare-handle{position:absolute;top:0;width:3px;height:100%;background:white;box-shadow:0 0 0 1.5px rgba(0,0,0,.2);cursor:col-resize;z-index:5}
+        .compare-handle::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:white;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+        .compare-handle::after{content:'↔';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;color:#047857;font-weight:900;z-index:1;line-height:1}
+
+        .join-nav{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;color:#047857;box-shadow:0 2px 6px rgba(0,0,0,.1);cursor:pointer;transition:all .18s;border:none}
+        .join-nav:active{transform:scale(.9)}
+
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        .fade-in{animation:fadeIn .35s ease both}
+    </style>
+</head>
+<body class="text-slate-700">
+<main class="px-4 max-w-xl mx-auto space-y-5" style="padding-top:84px;padding-bottom:110px">
+
+    <!-- TÍTULO -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-xl font-extrabold text-slate-800 leading-none">IA Visualizador</h2>
+            <p class="text-xs text-slate-400 mt-1">Reimaginá tu espacio con placas Steel &amp; Deco</p>
+        </div>
+        <div id="creditChip" class="hidden items-center gap-1.5 bg-brand-50 border border-brand-200 text-brand-700 text-xs font-bold px-3 py-1.5 rounded-full flex">
+            <i class="fa-solid fa-bolt text-[10px]"></i>
+            <span id="creditCount">0</span> créditos
+        </div>
+    </div>
+
+    <!-- PASO 1: FOTO -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+            <p class="font-bold text-slate-700 text-sm">Subí tu foto</p>
+        </div>
+        <div class="p-4">
+            <div id="uploadZone" class="upload-zone relative">
+                <div id="uploadPlaceholder" class="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+                    <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-camera text-brand-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-700 text-sm">Foto de tu ambiente</p>
+                        <p class="text-xs text-slate-400 mt-1">Sacá una foto o subí desde galería</p>
+                    </div>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="triggerCamera()" class="flex items-center gap-2 bg-brand-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                            <i class="fa-solid fa-camera"></i> Cámara
+                        </button>
+                        <button onclick="triggerGallery()" class="flex items-center gap-2 bg-slate-100 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                            <i class="fa-solid fa-image"></i> Galería
+                        </button>
+                    </div>
+                </div>
+                <div id="previewWrap" class="hidden relative">
+                    <img id="previewImg" class="w-full rounded-[18px] object-cover" style="max-height:320px;object-fit:cover" alt="">
+                    <button onclick="clearPhoto()" class="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur text-white rounded-full flex items-center justify-center text-xs active:scale-90 transition-transform">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="absolute bottom-3 left-3">
+                        <button onclick="triggerGallery()" class="flex items-center gap-1.5 bg-black/50 backdrop-blur text-white text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                            <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Cambiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <input type="file" id="inputCamera"  accept="image/*" capture="environment" onchange="handlePhotoInput(event)">
+            <input type="file" id="inputGallery" accept="image/*" onchange="handlePhotoInput(event)">
+        </div>
+    </div>
+
+    <!-- PASO 2: SUPERFICIE -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+            <p class="font-bold text-slate-700 text-sm">¿Dónde aplicar la placa?</p>
+        </div>
+        <div class="p-4">
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setSurface('paredes')" id="surfaceParedes" class="surface-btn active py-3 px-2 flex flex-col items-center gap-1.5">
+                    <i class="fa-solid fa-wall text-lg text-brand-600"></i>
+                    <span class="text-[11px] font-bold text-slate-700">Paredes</span>
+                </button>
+                <button onclick="setSurface('suelo')" id="surfaceSuelo" class="surface-btn py-3 px-2 flex flex-col items-center gap-1.5">
+                    <i class="fa-solid fa-border-all text-lg text-slate-400"></i>
+                    <span class="text-[11px] font-bold text-slate-500">Suelo</span>
+                </button>
+                <button onclick="setSurface('techo')" id="surfaceTecho" class="surface-btn py-3 px-2 flex flex-col items-center gap-1.5">
+                    <i class="fa-solid fa-house-chimney text-lg text-slate-400"></i>
+                    <span class="text-[11px] font-bold text-slate-500">Techo</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PASO 3: PLACA -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+                <p class="font-bold text-slate-700 text-sm">Elegí la placa</p>
+            </div>
+            <span id="selectedPlacaName" class="hidden text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg"></span>
+        </div>
+        <div class="px-4 py-3">
+            <div class="flex gap-3 overflow-x-auto hide-scroll pb-1" id="placaRow"></div>
+        </div>
+    </div>
+
+    <!-- BOTÓN GENERAR -->
+    <button id="btnGenerar" onclick="generarVisualizacion()" disabled
+        class="w-full py-4 rounded-2xl font-extrabold text-base transition-all active:scale-[.98] bg-slate-200 text-slate-400 cursor-not-allowed">
+        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar visualización · 1 crédito
+    </button>
+
+    <!-- RESULTADO -->
+    <div id="resultSection" class="fade-in">
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sparkles text-brand-600 text-sm"></i>
+                    <p class="font-bold text-slate-700 text-sm">Tu visualización</p>
+                </div>
+                <span id="resultPlacaTag" class="hidden text-[10px] font-bold text-white bg-brand-700 px-2.5 py-1 rounded-full"></span>
+            </div>
+            <div class="p-4 space-y-4">
+                <div id="resultWrap" class="relative rounded-2xl overflow-hidden bg-slate-100" style="min-height:200px">
+                    <img id="resultImg" class="w-full rounded-2xl hidden" alt="Visualización generada">
+                    <div id="resultBadge" class="hidden absolute top-3 left-3 bg-brand-900/80 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full">✨ IA Generado</div>
+                    <div id="genOverlay" class="gen-overlay hidden">
+                        <div class="gen-ring"></div>
+                        <p class="text-white font-bold text-sm" id="genStep">Analizando tu foto...</p>
+                        <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+                        <p class="text-green-300 text-[11px] font-medium" id="genStepSub">Preparando la IA</p>
+                    </div>
+                    <div id="resultPlaceholder" class="flex items-center justify-center" style="min-height:200px">
+                        <div class="text-center text-slate-300">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl mb-2"></i>
+                            <p class="text-xs font-medium">Completá los pasos y generá</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparador antes/después -->
+                <div id="compareSection" class="hidden">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">Deslizá para comparar</p>
+                    <div class="compare-wrap" id="compareWrap">
+                        <img id="compareAfter" src="" alt="Después">
+                        <div class="compare-overlay" id="compareOverlay" style="width:50%">
+                            <img id="compareBefore" src="" alt="Antes">
+                        </div>
+                        <div class="compare-handle" id="compareHandle" style="left:50%"></div>
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <div id="resultActions" class="hidden flex gap-2">
+                    <button onclick="downloadResult()" class="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-download"></i> Guardar
+                    </button>
+                    <button onclick="shareResult()" class="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-700 text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-share-nodes"></i> Compartir
+                    </button>
+                    <button onclick="resetForNew()" class="flex items-center justify-center bg-slate-100 text-slate-700 text-sm font-bold py-3 px-4 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIONES Y TERMINACIONES -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-puzzle-piece"></i> Uniones y Terminaciones
+            </p>
+        </div>
+        <div class="p-4">
+            <div class="relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
+                <div class="relative" style="aspect-ratio:3/4">
+                    <img id="joinImage" src="" class="w-full h-full object-contain bg-white transition-opacity duration-300" alt="Unión">
+                    <div class="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
+                        <button onclick="prevJoin()" class="join-nav pointer-events-auto"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button onclick="nextJoin()" class="join-nav pointer-events-auto"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                    <div class="absolute top-3 right-3 bg-black/60 backdrop-blur px-2 py-1 rounded-full text-[10px] font-bold text-white">
+                        <span id="joinIndex">1</span>/<span id="joinTotal">3</span>
+                    </div>
+                </div>
+                <div class="p-4 bg-white border-t border-slate-100">
+                    <h4 id="joinTitle" class="text-base font-bold text-slate-800 mb-1">—</h4>
+                    <p id="joinDesc" class="text-xs text-brand-600 font-bold uppercase tracking-wide mb-2">—</p>
+                    <p id="joinDetail" class="text-sm text-slate-500 leading-relaxed">—</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script type="module" src="layout.js"></script>
+<script>
+const GEMINI_KEY   = "AIzaSyDvse710O7BaCM053vv4G4lYFC_fiyUe5M";
+const GEMINI_MODEL = "gemini-3.1-flash-image-preview"; // Nano Banana 2
+
+const placas = [
+    {id:'blanco',     nombre:'Blanco Liso',      img:'img/blanco.png',         desc:'superficie blanca lisa y uniforme'},
+    {id:'carrara',    nombre:'Carrara Golden',   img:'img/carrara-golden.jpg', desc:'mármol blanco con vetas doradas elegantes'},
+    {id:'carrarad',   nombre:'Carrara Golden D', img:'img/carrara-goldend.jpg',desc:'mármol blanco con vetas doradas muy intensas'},
+    {id:'madera',     nombre:'Madera Oscura',    img:'img/madera-oscura.jpg',  desc:'efecto madera en tono oscuro, vetas horizontales'},
+    {id:'marquina',   nombre:'Marquina',         img:'img/marquina.jpeg',      desc:'mármol negro con vetas blancas finas'},
+    {id:'travertino', nombre:'Travertino',       img:'img/travertino.jpg',     desc:'piedra travertino beige/ocre con poros naturales'},
+    {id:'wpf04',      nombre:'WPF-04',           img:'img/WPF-04.jpg',         desc:'marmoleado moderno gris y blanco'},
+    {id:'wpf06',      nombre:'WPF-06',           img:'img/WPF-06.jpg',         desc:'veteado suave crema y blanco'},
+    {id:'wpf08',      nombre:'WPF-08',           img:'img/WPF-08.jpg',         desc:'patrón marmoleado claro y luminoso'},
+    {id:'wpf10',      nombre:'WPF-10',           img:'img/WPF-10.jpg',         desc:'diseño premium con tonos beige dorado'},
+    {id:'wpf17',      nombre:'WPF-17',           img:'img/WPF-17.jpg',         desc:'textura natural piedra gris'},
+    {id:'wpf18',      nombre:'WPF-18',           img:'img/WPF-18.jpg',         desc:'vetas marcadas gris oscuro sobre blanco'},
+    {id:'wpf19',      nombre:'WPF-19',           img:'img/WPF-19.jpg',         desc:'acabado suave blanco mate con micro-vetas'},
+    {id:'wpf20',      nombre:'WPF-20',           img:'img/WPF-20.jpg',         desc:'diseño marmoleado elegante tonos grises'},
+];
+
+const joins = [
+    {name:'Ángulo Externo Dorado',  cat:'Perfilería de Lujo',    img:'img/joins/angulo_dorado.jpg',  detail:'Terminación premium en color oro brillante. Ideal para esquinas salientes, protegiendo el borde de la placa.'},
+    {name:'Unión Plana Dorada',     cat:'Perfil H de Transición',img:'img/joins/union_h_dorada.jpg', detail:'Perfil tipo H para unir dos placas en el mismo plano. El acabado dorado crea una línea estética divisoria.'},
+    {name:'Ángulo Externo Plateado',cat:'Perfilería Moderna',    img:'img/joins/angulo_plateado.jpg',detail:'Acabado minimalista en aluminio/plata. Perfecto para ambientes modernos y limpios.'},
+];
+
+// Estado
+let s = {b64:null, mime:null, url:null, surface:'paredes', placa:null, resultUrl:null, busy:false};
+let joinIdx = 0;
+
+// Init
+document.addEventListener("DOMContentLoaded", () => {
+    renderPlacas();
+    updateJoin();
+    updateBtn();
+
+    // Actualizar chip de créditos cuando layout.js tenga el perfil listo
+    const poll = setInterval(() => {
+        const p = window.getUserProfile?.();
+        if (p) { updateCreditChip(p); clearInterval(poll); }
+    }, 500);
+});
+
+// ── FOTO ─────────────────────────────────────────────────────────
+function triggerCamera()  { document.getElementById("inputCamera").click(); }
+function triggerGallery() { document.getElementById("inputGallery").click(); }
+
+function handlePhotoInput(e) {
+    const f = e.target.files[0]; if (!f) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const data = ev.target.result;
+        const [, b64] = data.split(",");
+        s.b64  = b64;
+        s.mime = f.type || "image/jpeg";
+        s.url  = data;
+        document.getElementById("uploadPlaceholder").classList.add("hidden");
+        document.getElementById("previewWrap").classList.remove("hidden");
+        document.getElementById("previewImg").src = data;
+        document.getElementById("uploadZone").classList.add("has-image");
+        updateBtn();
+    };
+    reader.readAsDataURL(f);
+}
+
+function clearPhoto() {
+    s.b64=null;s.mime=null;s.url=null;
+    document.getElementById("uploadPlaceholder").classList.remove("hidden");
+    document.getElementById("previewWrap").classList.add("hidden");
+    document.getElementById("uploadZone").classList.remove("has-image");
+    updateBtn();
+}
+
+// ── SUPERFICIE ───────────────────────────────────────────────────
+function setSurface(v) {
+    s.surface = v;
+    ["paredes","suelo","techo"].forEach(k => {
+        const btn = document.getElementById("surface"+k[0].toUpperCase()+k.slice(1));
+        const ico = btn.querySelector("i"), sp = btn.querySelector("span");
+        const on  = k===v;
+        btn.classList.toggle("active", on);
+        ico.className = ico.className.replace(/text-\S+/g, "").trim() + (on ? " text-brand-600" : " text-slate-400");
+        sp.className  = sp.className.replace(/text-\S+/g,  "").trim() + (on ? " text-slate-700" : " text-slate-500");
+    });
+}
+
+// ── PLACAS ───────────────────────────────────────────────────────
+function renderPlacas() {
+    document.getElementById("placaRow").innerHTML = placas.map(p => `
+        <div id="chip_${p.id}" class="placa-chip" onclick="selectPlaca('${p.id}')">
+            <img src="${p.img}" class="w-20 h-20 object-cover" onerror="this.src='https://placehold.co/80?text=${p.nombre}'">
+            <p class="text-[9px] text-center font-bold text-slate-600 py-1.5 bg-white px-1 truncate" style="max-width:80px">${p.nombre}</p>
+        </div>`).join("");
+}
+
+function selectPlaca(id) {
+    s.placa = placas.find(p=>p.id===id);
+    document.querySelectorAll(".placa-chip").forEach(c=>c.classList.remove("active"));
+    const chip = document.getElementById("chip_"+id);
+    chip.classList.add("active");
+    chip.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+    const badge = document.getElementById("selectedPlacaName");
+    badge.textContent = s.placa.nombre; badge.classList.remove("hidden");
+    updateBtn();
+}
+
+// ── BTN ──────────────────────────────────────────────────────────
+function updateBtn() {
+    const btn = document.getElementById("btnGenerar");
+    const ok  = s.b64 && s.placa && !s.busy;
+    btn.disabled = !ok;
+    btn.className = `w-full py-4 rounded-2xl font-extrabold text-base transition-all active:scale-[.98] ${ok ? "bg-brand-900 text-white shadow-lg shadow-brand-900/25 cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`;
+}
+
+// ── GENERAR ──────────────────────────────────────────────────────
+const STEPS = [
+    {msg:"Analizando tu foto...",       sub:"Detectando superficies",            pct:15},
+    {msg:"Aplicando la placa...",       sub:"",                                  pct:40},
+    {msg:"Reimaginando el espacio...",  sub:"Manteniendo muebles y objetos",     pct:65},
+    {msg:"Ajustando iluminación...",    sub:"Sombras y reflejos realistas",      pct:85},
+    {msg:"Finalizando...",              sub:"Revisión de calidad",               pct:95},
+];
+
+async function generarVisualizacion() {
+    if (!s.b64 || !s.placa || s.busy) return;
+
+    // Consumir crédito
+    if (window.consumeCredit) {
+        const ok = await window.consumeCredit();
+        if (!ok) return;
+    }
+
+    s.busy = true; updateBtn();
+
+    // Mostrar sección resultado y overlay
+    showOverlay(true);
+    let si = 0;
+    const interval = setInterval(() => {
+        if (si < STEPS.length) {
+            const st = STEPS[si];
+            document.getElementById("genStep").textContent    = st.msg;
+            document.getElementById("genStepSub").textContent = si===1 ? `Textura: ${s.placa.nombre}` : st.sub;
+            document.getElementById("progFill").style.width   = st.pct+"%";
+            si++;
+        }
+    }, 1800);
+
+    try {
+        const rb64 = await callGemini();
+        clearInterval(interval);
+        document.getElementById("progFill").style.width = "100%";
+        await sleep(400);
+        showResult(rb64);
+    } catch(err) {
+        clearInterval(interval);
+        showOverlay(false);
+        s.busy = false; updateBtn();
+        const msg = err.message || "Error desconocido";
+        window.showToast?.("⚠️ " + (msg.length > 60 ? msg.slice(0,60)+"..." : msg));
+        console.error("Gemini error:", err);
+    }
+}
+
+async function callGemini() {
+    const surfMap = {
+        paredes:"las paredes (todas las superficies verticales: pared de fondo, laterales)",
+        suelo:  "el suelo/piso (toda la superficie horizontal del piso)",
+        techo:  "el techo (toda la superficie horizontal superior del techo)"
+    };
+
+    const prompt = `Eres un experto en visualización fotorrealista de interiores.
+
+TAREA EXACTA: Transforma esta foto de un ambiente interior aplicando únicamente en ${surfMap[s.surface]} la placa de revestimiento PVC "${s.placa.nombre}" que tiene la siguiente apariencia: ${s.placa.desc}.
+
+REGLAS ESTRICTAS:
+1. Reemplazá SOLAMENTE ${surfMap[s.surface]} con la textura indicada.
+2. Todo lo demás permanece SIN CAMBIOS: muebles, electrodomésticos, decoración, ventanas, puertas, iluminación, personas, plantas, cuadros, y cualquier otro objeto.
+3. La textura aplicada debe seguir la perspectiva y geometría correcta de la superficie en la foto.
+4. La iluminación, sombras y reflejos deben ser coherentes y fotorrealistas.
+5. El resultado debe verse como una foto real del mismo espacio con el nuevo revestimiento instalado.
+6. Mismas dimensiones y encuadre que la foto original.
+
+Devolvé SOLO la imagen transformada.`;
+
+    const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+        {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                contents:[{parts:[
+                    {inline_data:{mime_type:s.mime, data:s.b64}},
+                    {text: prompt}
+                ]}],
+                generationConfig:{
+                    responseModalities:["IMAGE","TEXT"],
+                    temperature:0.3,
+                }
+            })
+        }
+    );
+
+    if (!res.ok) {
+        const e = await res.json().catch(()=>({}));
+        throw new Error(e?.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    // Debug completo en consola
+    console.log("GEMINI RAW:", JSON.stringify(data).slice(0,3000));
+    const candidate = data?.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+    console.log("Parts:", parts.length, parts.map(p=>Object.keys(p).join("+")));
+
+    for (const p of parts) {
+        // Probar todas las variantes de key que usa Gemini
+        const b64 = p?.inline_data?.data || p?.inlineData?.data;
+        if (b64) return b64;
+    }
+
+    const textPart = parts.find(p=>p.text);
+    const reason = candidate?.finishReason || "?";
+    console.error("No image found. FinishReason:", reason, "Text:", textPart?.text);
+    throw new Error("Sin imagen ("+reason+"). Abrí la consola (F12) y fijate en GEMINI RAW para diagnosticar.");
+}
+
+function showResult(rb64) {
+    const url = `data:image/png;base64,${rb64}`;
+    s.resultUrl = url;
+    const img = document.getElementById("resultImg");
+    img.src = url;
+    img.onload = () => {
+        showOverlay(false);
+        img.classList.remove("hidden");
+        document.getElementById("resultBadge").classList.remove("hidden");
+        document.getElementById("resultPlaceholder").classList.add("hidden");
+        document.getElementById("resultPlacaTag").textContent = s.placa.nombre;
+        document.getElementById("resultPlacaTag").classList.remove("hidden");
+        setupCompare();
+        document.getElementById("resultActions").classList.remove("hidden");
+        s.busy = false; updateBtn();
+        updateCreditChip(window.getUserProfile?.());
+        window.showToast?.("✨ ¡Visualización lista!");
+    };
+}
+
+function showOverlay(show) {
+    const ov = document.getElementById("genOverlay");
+    if (show) {
+        document.getElementById("progFill").style.width="5%";
+        document.getElementById("genStep").textContent    = STEPS[0].msg;
+        document.getElementById("genStepSub").textContent = STEPS[0].sub;
+        ov.classList.remove("hidden");
+        document.getElementById("resultPlaceholder").classList.add("hidden");
+    } else {
+        ov.classList.add("hidden");
+    }
+}
+
+// ── COMPARADOR ──────────────────────────────────────────────────
+function setupCompare() {
+    if (!s.url || !s.resultUrl) return;
+    document.getElementById("compareBefore").src = s.url;
+    document.getElementById("compareAfter").src  = s.resultUrl;
+    document.getElementById("compareSection").classList.remove("hidden");
+    initSlider();
+}
+function initSlider() {
+    const wrap=document.getElementById("compareWrap"),
+          handle=document.getElementById("compareHandle"),
+          overlay=document.getElementById("compareOverlay");
+    let drag=false;
+    const set=cx=>{const r=wrap.getBoundingClientRect();let p=Math.max(.02,Math.min(.98,(cx-r.left)/r.width));handle.style.left=(p*100)+"%";overlay.style.width=(p*100)+"%";};
+    wrap.addEventListener("mousedown",  e=>{drag=true;set(e.clientX);});
+    wrap.addEventListener("touchstart", e=>{drag=true;set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener("mousemove",  e=>{if(drag)set(e.clientX);});
+    document.addEventListener("touchmove",  e=>{if(drag)set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener("mouseup",  ()=>drag=false);
+    document.addEventListener("touchend", ()=>drag=false);
+}
+
+// ── ACCIONES ─────────────────────────────────────────────────────
+function downloadResult() {
+    if (!s.resultUrl) return;
+    const a=document.createElement("a");a.href=s.resultUrl;a.download=`steel-deco-${s.placa.id}-${s.surface}.png`;a.click();
+    window.showToast?.("📥 Imagen guardada");
+}
+async function shareResult() {
+    if (!s.resultUrl) return;
+    try {
+        const blob=(await fetch(s.resultUrl)).blob();
+        const file=new File([await blob],`steel-deco-${s.placa.nombre}.png`,{type:"image/png"});
+        if(navigator.share&&navigator.canShare({files:[file]})) await navigator.share({files:[file],title:"Steel & Deco",text:`Así quedaría con ${s.placa.nombre}`});
+        else downloadResult();
+    } catch{downloadResult();}
+}
+function resetForNew() {
+    s.resultUrl=null;
+    const img=document.getElementById("resultImg"); img.classList.add("hidden"); img.src="";
+    document.getElementById("resultBadge").classList.add("hidden");
+    document.getElementById("resultPlacaTag").classList.add("hidden");
+    document.getElementById("resultActions").classList.add("hidden");
+    document.getElementById("compareSection").classList.add("hidden");
+    document.getElementById("resultPlaceholder").classList.remove("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// ── CREDIT CHIP ───────────────────────────────────────────────────
+function updateCreditChip(p) {
+    if (!p) return;
+    document.getElementById("creditCount").textContent = p.credits ?? 0;
+    document.getElementById("creditChip").classList.remove("hidden");
+}
+
+// ── JOINS ─────────────────────────────────────────────────────────
+function updateJoin() {
+    const j=joins[joinIdx];
+    const img=document.getElementById("joinImage");img.style.opacity="0";
+    setTimeout(()=>{
+        img.src=j.img;
+        document.getElementById("joinTitle").textContent=j.name;
+        document.getElementById("joinDesc").textContent=j.cat;
+        document.getElementById("joinDetail").textContent=j.detail;
+        document.getElementById("joinIndex").textContent=joinIdx+1;
+        document.getElementById("joinTotal").textContent=joins.length;
+        img.onload=()=>img.style.opacity="1";
+        setTimeout(()=>img.style.opacity="1",200);
+    },150);
+}
+function nextJoin(){joinIdx=(joinIdx+1)%joins.length;updateJoin();}
+function prevJoin(){joinIdx=(joinIdx-1+joins.length)%joins.length;updateJoin();}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>

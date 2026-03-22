@@ -1,0 +1,16 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Redirigir el webhook de MP
+[[redirects]]
+  from = "/webhook/mp"
+  to = "/.netlify/functions/mp-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/verify-payment"
+  to = "/.netlify/functions/verify-payment"
+  status = 200

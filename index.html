@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <title>Steel & Deco - Calculadora</title>
+
+    <!-- Preconnect: reduce latencia -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Fuentes: solo pesos usados + font-display swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome: carga diferida (no bloquea render) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: { 50:'#f2fbf5', 100:'#e0f7e8', 500:'#10b981', 700:'#047857', 900:'#064e3b' }
+                    }
+                }
+            }
+        }
+    </script>
+
+
+
+    <style>
+        body { background: #fafaba; -webkit-tap-highlight-color: transparent; }
+        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.05); }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .slide-in-bottom { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .orientation-card.active { border-color: #10b981; background-color: #f2fbf5; }
+        
+        /* Slider Styles */
+        .longitud-slider { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px; background: #e2e8f0; outline: none; }
+        .longitud-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #10b981; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); }
+        
+        .product-img-container img { transition: transform 0.5s ease; }
+        .product-card:hover .product-img-container img { transform: scale(1.1); }
+    </style>
+</head>
+<body class="pb-24 text-slate-600">
+
+    <main class="mt-24 px-5 max-w-3xl mx-auto space-y-8">
+
+        <section id="calculadoraSection">
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="text-xl font-bold text-slate-800">Elegir Material</h2>
+            </div>
+            
+            <div class="flex gap-4 overflow-x-auto hide-scroll pb-4" id="productScrollContainer"></div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden mt-6">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-brand-300"></div>
+                
+                <div class="flex items-start gap-3 mb-6">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 border border-slate-200">
+                        <img id="selectedIconImg" src="" class="w-full h-full object-cover hidden">
+                        <span id="selectedIconPlaceholder" class="text-2xl">📦</span>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-slate-800 text-lg truncate" id="selectedName">Selecciona un producto</h3>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="text-xs text-slate-500 font-mono" id="selectedDimensions">-- x -- mm</span>
+                            <button class="text-xs text-brand-600 font-medium" onclick="openTechSheet()">Ficha Técnica <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Medida de Placa (Largo)</label>
+                    <div class="longitud-slider-container bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl font-bold text-slate-800" id="displayLongitud">0</span>
+                                <span class="text-sm font-semibold text-slate-600">metros</span>
+                            </div>
+                            <div class="text-xs text-brand-600 font-bold bg-brand-50 px-2 py-1 rounded"><i class="fa-solid fa-ruler-horizontal mr-1"></i> Medidas Disponible</div>
+                        </div>
+                        <input type="range" id="longitudSlider" class="longitud-slider" min="0" max="0" step="1" value="0" oninput="updateLongitudFromSlider()">
+                        <div class="flex justify-between mt-2 px-1" id="sliderSteps"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ancho Pared (m)</label>
+                        <div class="relative">
+                            <input type="text" inputmode="decimal" id="inputAncho" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold">
+                            <span class="absolute right-3 top-3 text-slate-400 text-sm">m</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Alto Pared (m)</label>
+                        <div class="relative">
+                            <input type="text" inputmode="decimal" id="inputAlto" placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold">
+                            <span class="absolute right-3 top-3 text-slate-400 text-sm">m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Orientación</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div onclick="selectOrientacion('horizontal')" id="orient-horizontal" class="orientation-card cursor-pointer p-4 rounded-xl border-2 border-slate-200 text-center active">
+                            <i class="fa-solid fa-arrows-left-right text-2xl text-brand-600 mb-2"></i>
+                            <p class="font-bold text-sm text-slate-800">Horizontal</p>
+                        </div>
+                        <div onclick="selectOrientacion('vertical')" id="orient-vertical" class="orientation-card cursor-pointer p-4 rounded-xl border-2 border-slate-200 text-center">
+                            <i class="fa-solid fa-arrows-up-down text-2xl text-slate-400 mb-2"></i>
+                            <p class="font-bold text-sm text-slate-800">Vertical</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-slate-700">Desperdicio Sugerido</span>
+                        <span id="valorDesperdicio" class="text-brand-700 font-bold">5%</span>
+                    </div>
+                    <input type="range" id="sliderDesperdicio" min="5" max="20" value="5" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600" oninput="actualizarDesperdicio()">
+                </div>
+
+                <button onclick="calcularMateriales()" class="w-full bg-brand-900 text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-900/20 active:scale-95 transition-transform flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-calculator"></i> Calcular Materiales
+                </button>
+            </div>
+
+            <div id="resultadoCard" class="hidden bg-brand-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden slide-in-bottom mt-6">
+                <div class="absolute top-0 right-0 opacity-10 text-9xl transform translate-x-4 -translate-y-4 rotate-12"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="relative z-10">
+                    <h4 class="text-brand-300 text-sm uppercase tracking-wider font-bold mb-4">Presupuesto Estimado</h4>
+                    <div class="flex justify-between items-end mb-6 pb-6 border-b border-brand-700">
+                        <div>
+                            <p class="text-3xl font-bold" id="resCantidad">0</p>
+                            <p class="text-sm text-brand-100" id="resUnidad">Placas necesarias</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-3xl font-bold text-brand-300" id="resPrecio">---</p>
+                            <p class="text-sm text-brand-100">Consultar Precio</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                        <div class="bg-brand-800/50 p-3 rounded-xl"><span class="block text-brand-300 text-xs">Área Total</span><span class="font-semibold" id="resArea">0 m²</span></div>
+                        <div class="bg-brand-800/50 p-3 rounded-xl"><span class="block text-brand-300 text-xs">Orientación</span><span class="font-semibold" id="resOrientacion">-</span></div>
+                        <div class="bg-brand-800/50 p-3 rounded-xl"><span class="block text-brand-300 text-xs">Matriz</span><span class="font-semibold" id="resFilas">-</span></div>
+                        <div class="bg-brand-800/50 p-3 rounded-xl"><span class="block text-brand-300 text-xs">Sobrante</span><span class="font-semibold" id="resDesperdicio">-</span></div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button id="btnCopiar" onclick="copiarPresupuesto()" class="flex-1 bg-brand-700 hover:bg-brand-600 py-3 rounded-xl font-semibold text-sm transition-colors active:scale-95">
+                            <i class="fa-regular fa-copy mr-1"></i> Copiar
+                        </button>
+                        <button onclick="compartirPresupuesto()" class="flex-1 bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition-colors active:scale-95">
+                            <i class="fa-brands fa-whatsapp mr-1"></i> Whatsapp
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module" src="layout.js"></script>
+
+    <div id="modalFicha" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 transform transition-transform duration-300 translate-y-full max-h-[85vh] overflow-y-auto" id="modalContent">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+            <div id="fichaContent"></div>
+            <button onclick="closeModal()" class="w-full mt-6 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold sticky bottom-0">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // DATOS INTERNOS (Sin products.js externo)
+        const materialesLocales = [
+            {
+                id: 'pvc_marble',
+                nombre: 'Lámina Mármol PVC',
+                ancho: 1220,
+                longitudes: [2.44, 2.80], 
+                espesor: '2 / 2.5 / 3 mm',
+                densidad: '2000kg/m³',
+                material: 'PVC, Polvo de calcio',
+                aplicacion: 'Hogar, Hotel, Restaurante, Hospital, Shopping...',
+                superficie: 'Espejado brillante, Mate, Textura piel, Alto brillo',
+                imagen: 'img/pvc_marble.jpg',
+                // precioBase: 1200 
+            },
+            {
+                id: 'bamboo_charcoal',
+                nombre: 'Panel Carbón Bambú',
+                ancho: 1220,
+                longitudes: [2.44, 2.80],
+                espesor: '5mm / 8mm',
+                densidad: '650-700kg/m³',
+                material: 'Cloruro de polivinilo / Polvo de calcio',
+                aplicacion: 'Oficina, Hotel, Shopping, Living',
+                superficie: 'Film PVC o PET',
+                imagen: 'img/bamboo_charcoal.jpg',
+                // precioBase: 1400 
+            },
+            {
+                id: 'acoustic_panel',
+                nombre: 'Panel Acústico',
+                ancho: 600,
+                longitudes: [1.20, 2.40, 2.70],
+                espesor: '21mm',
+                peso: '6-8kg/m²',
+                componente: 'Panel MDF + Panel 100% fibra poliéster',
+                aplicacion: 'Dormitorio, Jardín infantes, Cine, Estudio grabación',
+                imagen: 'img/acoustic_panel.webp',
+                // precioBase: 2500 
+            },
+            {
+                id: 'pu_stone',
+                nombre: 'Piedra PU',
+                ancho: 1200, 
+                longitudes: [0.60], 
+                espesor: '20-50mm / 30-110mm',
+                peso: '2.0-4.5kg por Pieza',
+                material: 'Poliuretano',
+                aplicacion: 'Villas, Departamentos, Pared Exterior',
+                imagen: 'img/pu_stone.jpg',
+                // precioBase: 3000 
+            }
+        ];
+
+        let currentProduct = null;
+        let selectedLongitud = 0;
+        let orientacion = 'horizontal';
+        let desperdicio = 5;
+
+        window.onload = () => {
+            renderProductSelector();
+            selectProduct(materialesLocales[0].id);
+        };
+
+        function renderProductSelector() {
+            const container = document.getElementById('productScrollContainer');
+            container.innerHTML = materialesLocales.map(p => `
+                <div onclick="selectProduct('${p.id}')" class="product-card min-w-[140px] bg-white p-3 rounded-2xl border border-slate-100 shadow-sm cursor-pointer hover:border-brand-500 transition-all group">
+                    <div class="product-img-container h-24 w-full bg-slate-100 rounded-xl mb-2 overflow-hidden relative border border-slate-100">
+                        <img src="${p.imagen}" onerror="this.src='https://placehold.co/200x200/e2e8f0/64748b?text=IMG'" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-700 leading-tight mb-1 truncate">${p.nombre}</h4>
+                    <div class="mt-1 text-[10px] text-slate-500 font-mono">${p.ancho}mm</div>
+                </div>
+            `).join('');
+        }
+
+        function selectProduct(id) {
+            currentProduct = materialesLocales.find(p => p.id === id);
+            document.getElementById('selectedName').innerText = currentProduct.nombre;
+            
+            const iconImg = document.getElementById('selectedIconImg');
+            const iconPlace = document.getElementById('selectedIconPlaceholder');
+            iconImg.src = currentProduct.imagen;
+            iconImg.classList.remove('hidden');
+            iconPlace.classList.add('hidden');
+
+            document.getElementById('selectedDimensions').innerText = `Ancho: ${currentProduct.ancho}mm`;
+            
+            actualizarSliderLogica(); 
+            document.getElementById('resultadoCard').classList.add('hidden');
+        }
+
+        function actualizarSliderLogica() {
+            const longitudes = currentProduct.longitudes;
+            const slider = document.getElementById('longitudSlider');
+            const display = document.getElementById('displayLongitud');
+            const stepsContainer = document.getElementById('sliderSteps');
+
+            slider.min = 0;
+            slider.max = longitudes.length - 1;
+            slider.value = 0; 
+            slider.step = 1;
+
+            selectedLongitud = longitudes[0];
+            display.innerText = selectedLongitud.toFixed(2);
+
+            stepsContainer.innerHTML = longitudes.map(l => 
+                `<span class="text-[10px] text-slate-400 font-mono">${l}m</span>`
+            ).join('');
+        }
+
+        function updateLongitudFromSlider() {
+            const index = parseInt(document.getElementById('longitudSlider').value);
+            selectedLongitud = currentProduct.longitudes[index];
+            document.getElementById('displayLongitud').innerText = selectedLongitud.toFixed(2);
+        }
+
+        function selectOrientacion(orient) {
+            orientacion = orient;
+            document.querySelectorAll('.orientation-card').forEach(c => { c.classList.remove('active'); c.querySelector('i').classList.replace('text-brand-600','text-slate-400'); });
+            const sel = document.getElementById(`orient-${orient}`);
+            sel.classList.add('active'); sel.querySelector('i').classList.replace('text-slate-400','text-brand-600');
+        }
+
+        function actualizarDesperdicio() {
+            desperdicio = parseInt(document.getElementById('sliderDesperdicio').value);
+            document.getElementById('valorDesperdicio').innerText = desperdicio + '%';
+        }
+
+        // Helper para convertir input con comas a float seguro
+        function safeParseFloat(val) {
+            if(!val) return 0;
+            // Reemplaza coma por punto y parsea
+            return parseFloat(val.toString().replace(',', '.'));
+        }
+
+        function calcularMateriales() {
+            if (!currentProduct) return;
+            const anchoInput = document.getElementById('inputAncho').value;
+            const altoInput = document.getElementById('inputAlto').value;
+            
+            const anchoPared = safeParseFloat(anchoInput);
+            const altoPared = safeParseFloat(altoInput);
+
+            if (anchoPared === 0 || altoPared === 0) { 
+                alert("Por favor ingresa el Ancho y Alto de la pared"); 
+                return; 
+            }
+
+            const areaTotal = anchoPared * altoPared;
+            const anchoPlacaM = currentProduct.ancho / 1000;
+            const areaPlaca = anchoPlacaM * selectedLongitud;
+            
+            let cantidad = Math.ceil(areaTotal / areaPlaca);
+            const cantidadFinal = Math.ceil(cantidad * (1 + desperdicio / 100));
+            
+            // Renderizado
+            document.getElementById('resCantidad').innerText = cantidadFinal;
+            document.getElementById('resUnidad').innerText = `placas de ${selectedLongitud}m`;
+            document.getElementById('resArea').innerText = areaTotal.toFixed(2) + ' m²';
+            document.getElementById('resOrientacion').innerText = orientacion === 'horizontal' ? 'Horizontal' : 'Vertical';
+            document.getElementById('resFilas').innerText = "-"; 
+            document.getElementById('resDesperdicio').innerText = (cantidadFinal - cantidad) + ' placas';
+
+            const card = document.getElementById('resultadoCard');
+            card.classList.remove('hidden'); card.classList.add('slide-in-bottom');
+            card.scrollIntoView({behavior: "smooth", block: "center"});
+        }
+
+        function generarTextoResumen() {
+            if (!currentProduct) return "";
+            const cantidad = document.getElementById('resCantidad').innerText;
+            const area = document.getElementById('resArea').innerText;
+            const ancho = document.getElementById('inputAncho').value;
+            const alto = document.getElementById('inputAlto').value;
+            const material = currentProduct.nombre;
+            const longitud = selectedLongitud;
+            const orientacionTexto = orientacion === 'horizontal' ? 'Horizontal' : 'Vertical';
+
+            return `Hola Steel&Deco! 👋 Consulta web:
+
+📋 *PRESUPUESTO ESTIMADO*
+*Material:* ${material}
+*Largo Placa:* ${longitud} mts
+*Cantidad:* ${cantidad} placas
+*Instalación:* ${orientacionTexto}
+------------------
+📏 *Datos de Obra:*
+*Pared:* ${ancho}m x ${alto}m
+*Área:* ${area}
+
+¿Me confirman stock?`;
+        }
+
+        function compartirPresupuesto() {
+            if (!currentProduct) return;
+            const mensaje = generarTextoResumen();
+            const url = `https://wa.me/5491162459424?text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+        }
+
+        function copiarPresupuesto() {
+            if (!currentProduct) return;
+            const texto = generarTextoResumen();
+            const btn = document.getElementById('btnCopiar');
+            const contenidoOriginal = btn.innerHTML;
+
+            navigator.clipboard.writeText(texto).then(() => {
+                btn.classList.remove('bg-brand-700');
+                btn.classList.add('bg-green-600');
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> ¡Copiado!';
+                setTimeout(() => {
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-brand-700');
+                    btn.innerHTML = contenidoOriginal;
+                }, 2000);
+            }).catch(err => alert("No se pudo copiar."));
+        }
+
+        function openTechSheet() {
+            if(!currentProduct) return;
+            const modal = document.getElementById('modalFicha');
+            const content = document.getElementById('fichaContent');
+            
+            let tableRows = '';
+            if(currentProduct.ancho) tableRows += row('Tamaño (Ancho)', currentProduct.ancho + ' mm');
+            if(currentProduct.longitudes) tableRows += row('Longitudes', currentProduct.longitudes.join('m / ') + 'm');
+            if(currentProduct.espesor) tableRows += row('Espesor', currentProduct.espesor);
+            if(currentProduct.densidad) tableRows += row('Densidad', currentProduct.densidad);
+            if(currentProduct.peso) tableRows += row('Peso', currentProduct.peso);
+            if(currentProduct.material) tableRows += row('Material', currentProduct.material);
+            if(currentProduct.componente) tableRows += row('Componentes', currentProduct.componente);
+            if(currentProduct.superficie) tableRows += row('Superficie', currentProduct.superficie);
+            
+            content.innerHTML = `
+                <div class="flex items-start gap-4 mb-6">
+                    <div class="w-24 h-24 rounded-xl overflow-hidden border border-slate-100 flex-shrink-0">
+                        <img src="${currentProduct.imagen}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-1">${currentProduct.nombre}</h3>
+                        <div class="inline-block bg-brand-100 text-brand-700 px-3 py-1 rounded-full text-xs font-bold mt-2">
+                            Especificaciones Técnicas
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-slate-50 rounded-2xl p-1 border border-slate-100">
+                    <table class="w-full text-sm text-left">
+                        ${tableRows}
+                    </table>
+                </div>
+
+                <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <h4 class="text-blue-800 font-bold text-xs uppercase mb-2">Aplicaciones Recomendadas</h4>
+                    <p class="text-blue-600 text-sm leading-relaxed">${currentProduct.aplicacion || 'Interior'}</p>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('modalContent').classList.remove('translate-y-full'), 10);
+        }
+
+        function row(label, value) {
+            return `
+                <tr class="border-b border-slate-200 last:border-0">
+                    <td class="py-3 px-4 font-bold text-slate-500 w-1/3">${label}</td>
+                    <td class="py-3 px-4 font-bold text-slate-800">${value}</td>
+                </tr>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('modalContent').classList.add('translate-y-full');
+            setTimeout(() => document.getElementById('modalFicha').classList.add('hidden'), 300);
+        }
+    </script>
+</body>
+</html>
