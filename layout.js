@@ -83,7 +83,7 @@ async function loadOrCreateProfile(user) {
             credits: 10, plan: "free",
             isInstaller: isInst,
             isRecommended: false,
-            installerStatus: isInst ? "active" : null,
+            installerStatus: isInst ? "pending" : null,
             lastDailyCredit: null, createdAt: serverTimestamp()
         };
         await setDoc(ref, data);
@@ -158,7 +158,16 @@ function injectHeader() {
 function updateHeader() {
     const el = document.getElementById("headerUserAction");
     if (!el) return;
+    // Mostrar datos cacheados mientras carga para evitar flash
+    if (!_user && !_profile) {
+        const cached = sessionStorage.getItem("sd_credits");
+        if (cached !== null) {
+            // Si tenemos cache, no mostrar "Ingresar" hasta confirmar logout real
+            return;
+        }
+    }
     if (_user && _profile) {
+        sessionStorage.setItem("sd_credits", _profile.credits ?? 0);
         const i  = (_profile.displayName||_user.email||"?")[0].toUpperCase();
         const av = _profile.photoURL ? `<img src="${_profile.photoURL}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 bg-emerald-800 text-white rounded-full flex items-center justify-center font-bold text-sm">${i}</div>`;
         el.innerHTML = `<div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full pl-1 pr-3 py-1 cursor-pointer hover:bg-slate-100 transition" onclick="openProfile()">${av}<div class="leading-none"><span class="block text-[9px] text-slate-400 font-bold uppercase">Créditos</span><span class="block text-xs font-bold text-emerald-700">⚡ ${_profile.credits??0}</span></div></div>`;
@@ -202,9 +211,8 @@ function injectModals() {
         </button>
         <div class="flex items-center gap-3 mb-4"><div class="flex-1 h-px bg-slate-200"></div><span class="text-xs text-slate-400">o con email</span><div class="flex-1 h-px bg-slate-200"></div></div>
         <div class="flex bg-slate-100 rounded-xl p-1 mb-4">
-          <button onclick="switchAuthTab('login')" id="tabLogin" class="flex-1 py-2 rounded-lg text-xs font-bold bg-white shadow text-slate-800 transition-all">Ingresar con email</button>
-          <!-- Registro temporalmente deshabilitado -->
-          <button id="tabRegister" class="hidden"></button>
+          <button onclick="switchAuthTab('login')" id="tabLogin" class="flex-1 py-2 rounded-lg text-xs font-bold bg-white shadow text-slate-800 transition-all">Ingresar</button>
+          <button onclick="switchAuthTab('register')" id="tabRegister" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 transition-all">Crear cuenta</button>
         </div>
         <div id="fieldName" class="hidden mb-3"><input type="text" id="authName" placeholder="Tu nombre" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition"></div>        <div class="mb-3"><input type="email" id="authEmail" placeholder="Email" autocomplete="email" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition"></div>
         <div class="mb-3 relative">
@@ -247,7 +255,20 @@ function injectModals() {
           <p class="text-[11px] text-slate-400 mt-1" id="dailyCreditStatus"></p>
           <div class="absolute -right-3 -bottom-3 text-7xl text-slate-800 opacity-40 pointer-events-none"><i class="fa-solid fa-bolt"></i></div>
         </div>
-        <div id="installerBanner" class="hidden mb-4 p-3 rounded-xl text-xs font-semibold"></div>
+        <div id="installerBanner" class="hidden mb-4 rounded-2xl text-xs font-semibold overflow-hidden"></div>
+        <!-- Sección membresía instalador (visible solo para no-instaladores) -->
+        <div id="membershipSection" class="hidden mb-4">
+          <div class="bg-gradient-to-br from-slate-900 to-emerald-950 rounded-2xl p-4 relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 text-7xl opacity-10 pointer-events-none">🔧</div>
+            <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">¿Sos instalador?</p>
+            <p class="font-bold text-white text-sm mb-0.5">Membresía Instalador Destacado</p>
+            <p class="text-[11px] text-slate-400 mb-3">Aparecé primero · 10 créditos + 20/mes · tarjeta premium en el directorio</p>
+            <div class="flex items-center justify-between">
+              <div><span class="text-2xl font-extrabold text-white">$14.99</span><span class="text-xs text-slate-400"> USD/mes</span></div>
+              <button onclick="upgradeToRecommended()" class="bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold px-4 py-2 rounded-xl active:scale-95 transition-all">Suscribirme</button>
+            </div>
+          </div>
+        </div>
         <h4 class="font-bold text-slate-700 text-xs uppercase tracking-wide mb-3">Comprar créditos</h4>
         <button onclick="buyCredits('pack5')" class="w-full flex justify-between items-center border-2 border-slate-200 hover:border-emerald-400 rounded-xl px-4 py-3 mb-2 transition-all active:scale-95 group">
           <div class="text-left"><p class="font-bold text-sm text-slate-800">5 créditos</p><p class="text-xs text-slate-400">Ideal para probar</p></div>
@@ -262,17 +283,126 @@ function injectModals() {
           <span class="font-bold text-emerald-700 text-sm">$8.99 USD</span>
         </button>
         <div id="upgradeSection" class="hidden">
-          <h4 class="font-bold text-slate-700 text-xs uppercase tracking-wide mb-3 mt-2">Destacarte como instalador</h4>
-          <button onclick="upgradeToRecommended()" class="w-full flex justify-between items-center border-2 border-amber-300 hover:border-amber-400 bg-amber-50 rounded-xl px-4 py-3 mb-3 transition-all active:scale-95">
-            <div class="text-left"><p class="font-bold text-sm text-slate-800">⭐ Instalador Destacado</p><p class="text-xs text-slate-400">Primero en la lista · tarjeta premium</p></div>
-            <span class="font-bold text-amber-600 text-sm">$14.99<span class="text-[10px] font-normal text-slate-400">/mes</span></span>
-          </button>
+          <div class="border-t border-slate-100 pt-3 mt-1 mb-3">
+            <button onclick="upgradeToRecommended()" class="w-full flex justify-between items-center border-2 border-amber-300 hover:border-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl px-4 py-3.5 transition-all active:scale-95">
+              <div class="text-left">
+                <p class="font-bold text-sm text-slate-800">⭐ Destacarte en el directorio</p>
+                <p class="text-xs text-slate-500 mt-0.5">Primero en la lista · 10 cred + 20/mes</p>
+              </div>
+              <div class="text-right flex-shrink-0 ml-3">
+                <p class="font-extrabold text-amber-600 text-base">$14.99</p>
+                <p class="text-[10px] text-slate-400">USD/mes</p>
+              </div>
+            </button>
+          </div>
         </div>
         <button onclick="closeModals()" class="w-full mt-2 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Cerrar</button>
       </div>
     </div>
 
     <div id="globalToast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900/95 text-white px-5 py-3 rounded-full text-sm font-semibold opacity-0 pointer-events-none transition-all duration-300 z-[9999] whitespace-nowrap shadow-lg"></div>
+
+    <!-- Modal perfil instalador -->
+    <div id="installerProfileModal" class="modal-overlay" onclick="handleOverlayClick(event,'installerProfileModal')">
+      <div class="modal-box" style="max-height:92vh;overflow-y:auto;padding:0">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-brand-900 to-emerald-800 p-5 rounded-t-3xl relative">
+          <button class="absolute top-4 right-4 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white text-xs" onclick="closeModals()">✕</button>
+          <div class="flex items-center gap-3">
+            <div id="ipAvatar" class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-bold text-white overflow-hidden flex-shrink-0"></div>
+            <div>
+              <p class="font-extrabold text-white text-base leading-tight" id="ipName">—</p>
+              <p class="text-emerald-200 text-xs mt-0.5">Perfil de instalador</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-5 space-y-4">
+
+          <!-- GPS / Ubicación -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-location-dot text-emerald-600"></i> Ubicación (para el filtro "Mi zona")
+            </label>
+            <div id="ipLocationStatus" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-500 mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-circle-info text-slate-400"></i>
+              <span id="ipLocationText">Sin ubicación guardada</span>
+            </div>
+            <button onclick="captureGPS()" id="btnGPS" class="w-full flex items-center justify-center gap-2 bg-emerald-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+              <i class="fa-solid fa-location-crosshairs"></i> Usar mi ubicación GPS
+            </button>
+          </div>
+
+          <!-- Teléfono -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-phone text-emerald-600"></i> Teléfono / WhatsApp
+            </label>
+            <input type="tel" id="ipPhone" placeholder="Ej: 5491112345678 (con código de país)" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition">
+            <p class="text-[10px] text-slate-400 mt-1 ml-1">Incluí el código de país para WhatsApp (54 = Argentina)</p>
+          </div>
+
+          <!-- Zona -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-map text-emerald-600"></i> Zona de cobertura
+            </label>
+            <input type="text" id="ipZone" placeholder="Ej: CABA y GBA Norte" 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition">
+          </div>
+
+          <!-- Especialidad -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-screwdriver-wrench text-emerald-600"></i> Especialidad
+            </label>
+            <select id="ipSpecialty" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition appearance-none">
+              <option value="">Seleccioná una especialidad</option>
+              <option>Revestimientos PVC</option>
+              <option>Pisos y revestimientos</option>
+              <option>Cocinas y baños</option>
+              <option>Instalaciones generales</option>
+              <option>Reformas integrales</option>
+              <option>Comercios y oficinas</option>
+            </select>
+          </div>
+
+          <!-- Experiencia -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-clock text-emerald-600"></i> Años de experiencia
+            </label>
+            <select id="ipExperience" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition appearance-none">
+              <option value="">Seleccioná</option>
+              <option>Menos de 1 año</option>
+              <option>1-2 años</option>
+              <option>3-5 años</option>
+              <option>5-10 años</option>
+              <option>Más de 10 años</option>
+            </select>
+          </div>
+
+          <!-- Sobre mí -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+              <i class="fa-solid fa-user text-emerald-600"></i> Sobre mí <span class="text-slate-400 normal-case font-normal">(opcional)</span>
+            </label>
+            <textarea id="ipAbout" rows="3" placeholder="Contale a los clientes quién sos, qué hacés y por qué elegirte..." 
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition resize-none"></textarea>
+          </div>
+
+          <!-- Guardar -->
+          <button onclick="saveInstallerProfile()" id="btnSaveIP"
+            class="w-full bg-emerald-900 text-white py-3.5 rounded-2xl font-extrabold text-sm shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar perfil
+          </button>
+
+          <button onclick="closeModals()" class="w-full text-slate-400 text-xs font-semibold py-1">Cancelar</button>
+        </div>
+      </div>
+    </div>
     `);
 }
 
@@ -284,6 +414,9 @@ function bindGlobals() {
     window.checkPasswordStrength=checkPasswordStrength; window.checkConfirm=checkConfirm;
     window.buyCredits=buyCredits; window.upgradeToRecommended=upgradeToRecommended;
     window.handleOverlayClick=handleOverlayClick;
+    window.openInstallerProfile=openInstallerProfile;
+    window.captureGPS=captureGPS;
+    window.saveInstallerProfile=saveInstallerProfile;
 }
 
 let _authMode="login", _accountType="user";
@@ -359,7 +492,8 @@ async function submitAuth(){
             await updateProfile(cred.user,{displayName:name});
             closeModals();
             if(_accountType==="installer"){
-                showToast("¡Bienvenido instalador! Ya estás en el directorio 🔧");
+                showToast("¡Cuenta creada! Completá el formulario para aparecer 📋");
+                setTimeout(()=>window.open("https://forms.gle/ySkucYWySq6apYr26","_blank"),1400);
             }else{showToast("¡Bienvenido! 10 créditos de regalo ⚡");}
         }
     }catch(e){showAuthError(fbMsg(e.code));}
@@ -392,15 +526,55 @@ function openProfile(){
     const today=new Date();today.setHours(0,0,0,0);
     const stEl=document.getElementById("dailyCreditStatus");
     if(stEl){if(last&&last>=today)stEl.textContent="✅ Crédito diario ya acreditado hoy";else{const diff=(21-h+24)%24;stEl.textContent=diff===0?"⚡ ¡Crédito disponible ahora!":`⏰ Próximo crédito en ${diff}h (a las 21hs)`;}}
-    const banner=document.getElementById("installerBanner"),upgrade=document.getElementById("upgradeSection"),st=_profile.installerStatus;
-    if(st==="pending"||st==="active"){banner.className="mb-4 p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";banner.innerHTML="✅ Instalador activo. Estás visible en el directorio.";banner.classList.remove("hidden");if(!_profile.isRecommended)upgrade.classList.remove("hidden");else upgrade.classList.add("hidden");}
-    else if(st==="verified"||_profile.isInstaller){banner.className="mb-4 p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";banner.innerHTML="✅ Instalador <strong>verificado</strong>. Estás en el directorio.";banner.classList.remove("hidden");if(!_profile.isRecommended)upgrade.classList.remove("hidden");else upgrade.classList.add("hidden");}
-    else if(st==="rejected"){banner.className="mb-4 p-3 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200";banner.innerHTML="❌ Verificación rechazada. Contactate con soporte.";banner.classList.remove("hidden");upgrade.classList.add("hidden");}
-    else{banner.classList.add("hidden");upgrade.classList.add("hidden");}
+    const banner=document.getElementById("installerBanner"),
+          upgrade=document.getElementById("upgradeSection"),
+          membership=document.getElementById("membershipSection"),
+          st=_profile.installerStatus;
+
+    // Ocultar todo primero
+    banner.classList.add("hidden"); upgrade.classList.add("hidden"); membership.classList.add("hidden");
+
+    if(_profile.isRecommended){
+        // Instalador destacado activo
+        banner.innerHTML=`<div class="bg-gradient-to-r from-amber-400 to-yellow-500 p-4">
+            <div class="flex items-center gap-2 mb-1"><span class="text-lg">⭐</span><span class="font-bold text-amber-900 text-sm">Instalador Destacado activo</span></div>
+            <p class="text-amber-800 text-[11px]">Aparecés primero en el directorio con tu tarjeta premium</p>
+        </div>`;
+        banner.classList.remove("hidden");
+    } else if(st==="pending"){
+        banner.innerHTML=`<div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl">
+            <p class="text-amber-700 font-bold text-xs mb-1">🕐 Verificación en proceso</p>
+            <p class="text-amber-600 text-[11px] mb-2">Completá el formulario para aparecer en el directorio</p>
+            <a href="https://forms.gle/ySkucYWySq6apYr26" target="_blank" class="inline-block bg-amber-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Completar formulario →</a>
+        </div>`;
+        banner.classList.remove("hidden");
+        upgrade.classList.remove("hidden");
+    } else if(st==="active"||st==="verified"||_profile.isInstaller){
+        banner.innerHTML=`<div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl">
+            <div class="flex items-start gap-2 mb-2">
+                <span class="text-base mt-0.5">✅</span>
+                <div><p class="text-emerald-700 font-bold text-xs">Instalador activo</p><p class="text-emerald-600 text-[11px]">Estás visible en el directorio de Steel & Deco</p></div>
+            </div>
+            <button onclick="openInstallerProfile()" class="w-full bg-emerald-700 text-white text-xs font-bold py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-pen-to-square text-[11px]"></i> Editar mi perfil de instalador
+            </button>
+        </div>`;
+        banner.classList.remove("hidden");
+        upgrade.classList.remove("hidden");
+    } else if(st==="rejected"){
+        banner.innerHTML=`<div class="bg-red-50 border border-red-200 p-3 rounded-2xl">
+            <p class="text-red-600 font-bold text-xs">❌ Verificación rechazada</p>
+            <p class="text-red-500 text-[11px] mt-1">Contactate con soporte para más información</p>
+        </div>`;
+        banner.classList.remove("hidden");
+    } else {
+        // Usuario normal — mostrar propuesta de membresía
+        membership.classList.remove("hidden");
+    }
     document.getElementById("profileModal").classList.add("open");
 }
 
-function performLogout(){signOut(auth).then(()=>{_user=null;_profile=null;updateHeader();closeModals();showToast("Sesión cerrada");});}
+function performLogout(){signOut(auth).then(()=>{_user=null;_profile=null;sessionStorage.removeItem("sd_credits");updateHeader();closeModals();showToast("Sesión cerrada");});}
 // ── MercadoPago: crear preferencia via Netlify Function ──────
 // El Access Token vive solo en el servidor (variable de entorno), nunca en el frontend
 async function createMPPreference(title, price, metadata) {
@@ -856,6 +1030,132 @@ function cancelPaymentWait() {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ══════════════════════════════════════════════════════
+// PERFIL DE INSTALADOR — GPS + DATOS
+// ══════════════════════════════════════════════════════
+let _gpsCoords = null; // lat/lng capturado en la sesión actual
+
+function openInstallerProfile() {
+    if (!_user || !_profile) return;
+    closeModals();
+
+    // Poblar avatar
+    const av = document.getElementById("ipAvatar");
+    if (_profile.photoURL) av.innerHTML = `<img src="${_profile.photoURL}" class="w-full h-full object-cover">`;
+    else av.textContent = (_profile.displayName || "?")[0].toUpperCase();
+    document.getElementById("ipName").textContent = _profile.displayName || "Instalador";
+
+    // Poblar campos con datos existentes
+    document.getElementById("ipPhone").value      = _profile.phone      || "";
+    document.getElementById("ipZone").value       = _profile.zone       || "";
+    document.getElementById("ipSpecialty").value  = _profile.specialty  || "";
+    document.getElementById("ipExperience").value = _profile.experience || "";
+    document.getElementById("ipAbout").value      = _profile.about      || "";
+
+    // Estado de ubicación
+    const locText = document.getElementById("ipLocationText");
+    if (_profile.lat && _profile.lng) {
+        locText.textContent = `📍 Ubicación guardada (${_profile.lat.toFixed(4)}, ${_profile.lng.toFixed(4)})`;
+        document.getElementById("ipLocationStatus").className =
+            "bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-xs text-emerald-700 mb-2 flex items-center gap-2";
+        document.getElementById("btnGPS").textContent = "🔄 Actualizar ubicación GPS";
+        document.getElementById("btnGPS").className = document.getElementById("btnGPS").className.replace("bg-emerald-900","bg-emerald-700");
+    } else {
+        locText.textContent = "Sin ubicación guardada — los clientes no podrán encontrarte por zona";
+        document.getElementById("ipLocationStatus").className =
+            "bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700 mb-2 flex items-center gap-2";
+    }
+
+    document.getElementById("installerProfileModal").classList.add("open");
+}
+
+async function captureGPS() {
+    const btn = document.getElementById("btnGPS");
+    const locText = document.getElementById("ipLocationText");
+    const locBox  = document.getElementById("ipLocationStatus");
+
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Obteniendo ubicación...`;
+    btn.disabled  = true;
+
+    if (!navigator.geolocation) {
+        showToast("⚠️ Tu dispositivo no soporta GPS");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Usar mi ubicación GPS`;
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            _gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            locText.textContent = `✅ GPS capturado: ${_gpsCoords.lat.toFixed(5)}, ${_gpsCoords.lng.toFixed(5)}`;
+            locBox.className = "bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-xs text-emerald-700 mb-2 flex items-center gap-2";
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Ubicación capturada`;
+            btn.className = btn.className.replace("bg-emerald-900","bg-emerald-600");
+            btn.disabled  = false;
+            showToast("📍 Ubicación GPS lista — guardá el perfil para aplicarla");
+        },
+        (err) => {
+            const msgs = {1:"Permiso denegado. Habilitá la ubicación en tu dispositivo.",2:"No se pudo obtener la ubicación.",3:"Tiempo agotado. Intentá de nuevo."};
+            locText.textContent = msgs[err.code] || "Error al obtener ubicación";
+            locBox.className = "bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-600 mb-2 flex items-center gap-2";
+            btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Reintentar`;
+            btn.disabled  = false;
+        },
+        { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
+    );
+}
+
+async function saveInstallerProfile() {
+    if (!_user) return;
+    const btn = document.getElementById("btnSaveIP");
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...`;
+    btn.disabled  = true;
+
+    const updates = {
+        phone:      document.getElementById("ipPhone").value.trim(),
+        zone:       document.getElementById("ipZone").value.trim(),
+        specialty:  document.getElementById("ipSpecialty").value,
+        experience: document.getElementById("ipExperience").value,
+        about:      document.getElementById("ipAbout").value.trim(),
+    };
+
+    // Solo actualizar coordenadas si el usuario capturó GPS en esta sesión
+    if (_gpsCoords) {
+        updates.lat = _gpsCoords.lat;
+        updates.lng = _gpsCoords.lng;
+    }
+
+    // Validación básica
+    if (!updates.phone) {
+        showToast("⚠️ El teléfono es obligatorio");
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar perfil`;
+        btn.disabled = false;
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "users", _user.uid), updates);
+        // Actualizar perfil local
+        Object.assign(_profile, updates);
+        if (_gpsCoords) { _profile.lat = _gpsCoords.lat; _profile.lng = _gpsCoords.lng; _gpsCoords = null; }
+
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> ¡Perfil guardado!`;
+        btn.className = btn.className.replace("bg-emerald-900","bg-emerald-600");
+        setTimeout(() => {
+            closeModals();
+            showToast("✅ Perfil actualizado. Ya aparecés en el directorio con tus datos.");
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar perfil`;
+            btn.className = btn.className.replace("bg-emerald-600","bg-emerald-900");
+            btn.disabled  = false;
+        }, 900);
+    } catch(e) {
+        console.error(e);
+        showToast("⚠️ Error al guardar. Intentá de nuevo.");
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Guardar perfil`;
+        btn.disabled  = false;
+    }
+}
 
 function showToast(msg){
     const t=document.getElementById("globalToast");if(!t)return;
