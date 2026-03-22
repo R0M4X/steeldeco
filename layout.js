@@ -41,8 +41,9 @@ window.refundCredit    = refundCredit;
 window.showToast       = showToast;
 
 // ── MercadoPago ──────────────────────────────────────────────
-const MP_PUBLIC_KEY  = "APP_USR-5d5b7fbd-17cd-4099-9976-bd97821fcc2d";
-const MP_ACCESS_TOKEN= "APP_USR-3612831531931648-120507-648b157b6cc70a2e78f70577355bbb7f-180964893";
+// La Public Key puede estar en el frontend (es pública por diseño de MP)
+const MP_PUBLIC_KEY = "APP_USR-5d5b7fbd-17cd-4099-9976-bd97821fcc2d";
+// El Access Token NUNCA va en el frontend — lo usa solo la Netlify Function mp-create-preference.js
 
 // Planes de créditos
 const CREDIT_PACKS = [
@@ -400,27 +401,18 @@ function openProfile(){
 }
 
 function performLogout(){signOut(auth).then(()=>{_user=null;_profile=null;updateHeader();closeModals();showToast("Sesión cerrada");});}
-// ── MercadoPago: crear preferencia y redirigir ───────────────
+// ── MercadoPago: crear preferencia via Netlify Function ──────
+// El Access Token vive solo en el servidor (variable de entorno), nunca en el frontend
 async function createMPPreference(title, price, metadata) {
     try {
-        const body = {
-            items:[{ title, quantity:1, currency_id:"USD", unit_price: price }],
-            metadata,
-            back_urls:{
-                success: window.location.origin + window.location.pathname + "?mp=success",
-                failure: window.location.origin + window.location.pathname + "?mp=failure",
-                pending: window.location.origin + window.location.pathname + "?mp=pending",
-            },
-            auto_return:"approved",
-            external_reference: _user.uid + "|" + metadata.type + "|" + metadata.credits,
-        };
-        const res = await fetch("https://api.mercadopago.com/checkout/preferences", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + MP_ACCESS_TOKEN },
-            body: JSON.stringify(body)
+        const res = await fetch("/.netlify/functions/mp-create-preference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, price, metadata, uid: _user.uid })
         });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        return data.init_point || data.sandbox_init_point || null;
+        return data.init_point || null;
     } catch(e) { console.error("MP Error:", e); return null; }
 }
 
