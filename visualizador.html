@@ -71,13 +71,11 @@
 <body class="text-slate-700">
 <main class="px-4 max-w-xl mx-auto space-y-4" style="padding-top:84px;padding-bottom:110px">
 
-    <!-- HEADER -->
     <div>
         <h2 class="text-xl font-extrabold text-slate-800 leading-none">Visualizador</h2>
         <p class="text-xs text-slate-400 mt-0.5">Probá las placas en tu espacio</p>
     </div>
 
-    <!-- TABS -->
     <div class="tab-bar">
         <button class="tab-btn active" id="tabBtnIA" onclick="setTab('ia')">
             <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> Visualizador IA
@@ -87,12 +85,7 @@
         </button>
     </div>
 
-    <!-- ══════════════════════════════════
-         TAB IA
-    ══════════════════════════════════ -->
     <div id="tabIA" class="space-y-4 fade-up">
-
-        <!-- PASO 1: FOTO -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
@@ -128,14 +121,12 @@
             </div>
         </div>
 
-        <!-- PASO 2: SUPERFICIES -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
                 <p class="font-bold text-slate-700 text-sm">Elegí la placa por superficie</p>
             </div>
             <div class="p-4 space-y-3">
-                <!-- Botones de superficie -->
                 <div class="flex gap-2 overflow-x-auto hide-scroll pb-1">
                     <button class="surf-btn active" id="iaSurfPared" onclick="iaSetActiveSurf('pared')">
                         <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
@@ -162,19 +153,14 @@
                         <span>Techo</span>
                     </button>
                 </div>
-
-                <!-- Label dinámico -->
                 <div class="flex items-center justify-between">
                     <p class="text-xs text-slate-500">Placa para <strong id="iaSurfLabel" class="text-slate-700">Pared</strong></p>
                     <button id="iaClearSurfBtn" onclick="iaClearActiveSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg active:scale-95 transition-transform">Quitar placa</button>
                 </div>
-
-                <!-- Row de placas -->
                 <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="iaPlacaRow"></div>
             </div>
         </div>
 
-        <!-- COMBO RESUMEN -->
         <div id="iaComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-5 pt-4 pb-1 flex items-center justify-between">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -185,13 +171,11 @@
             <div id="iaComboList" class="px-4 pb-3 space-y-1.5 mt-2"></div>
         </div>
 
-        <!-- BTN GENERAR -->
         <button id="iaBtnGenerar" onclick="iaGenerar()" disabled
             class="w-full py-4 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 cursor-not-allowed transition-all active:scale-[.98]">
             <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito
         </button>
 
-        <!-- RESULTADO -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -218,7 +202,6 @@
                     </div>
                 </div>
 
-                <!-- Comparador -->
                 <div id="iaCompareSection" class="hidden">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">← Deslizá para comparar →</p>
                     <div class="compare-wrap" id="iaCompareWrap">
@@ -228,7 +211,6 @@
                     </div>
                 </div>
 
-                <!-- Acciones -->
                 <div id="iaResultActions" class="hidden flex gap-2">
                     <button onclick="iaDownload()" class="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
                         <i class="fa-solid fa-download"></i> Guardar
@@ -244,12 +226,7 @@
         </div>
     </div>
 
-    <!-- ══════════════════════════════════
-         TAB RACK TV
-    ══════════════════════════════════ -->
     <div id="tabRack" class="hidden space-y-4 fade-up">
-
-        <!-- STAGE -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-3">
                 <div class="rack-stage" id="rackStage">
@@ -274,34 +251,25 @@
                                         <stop offset="100%" stop-color="rgba(0,0,0,.05)"/>
                                     </linearGradient>
                                 </defs>
-                                <!-- Sombra -->
                                 <ellipse cx="210" cy="263" rx="192" ry="7" fill="rgba(0,0,0,.3)"/>
-                                <!-- Lateral -->
                                 <polygon points="18,88 42,72 42,252 18,262" id="rpSideRect" fill="#7a6a55"/>
                                 <polygon points="18,88 42,72 42,252 18,262" fill="url(#rSideG)" opacity=".8"/>
-                                <!-- Frente -->
                                 <rect id="rpFrontRect" x="42" y="72" width="356" height="178" rx="4" fill="#8B7355"/>
                                 <rect x="42" y="72" width="356" height="178" rx="4" fill="url(#rGloss)"/>
-                                <!-- Divisiones estantes -->
                                 <line x1="42" y1="132" x2="398" y2="132" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>
                                 <line x1="42" y1="192" x2="398" y2="192" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>
-                                <!-- Cajones -->
                                 <rect x="52" y="140" width="108" height="44" rx="3" fill="rgba(0,0,0,.14)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
                                 <rect x="92"  y="159" width="28" height="7" rx="3.5" fill="rgba(255,255,255,.22)"/>
                                 <rect x="170" y="140" width="86" height="44" rx="3" fill="rgba(0,0,0,.11)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
                                 <rect x="203" y="159" width="22" height="7" rx="3.5" fill="rgba(255,255,255,.2)"/>
                                 <rect x="266" y="140" width="86" height="44" rx="3" fill="rgba(0,0,0,.11)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
                                 <rect x="299" y="159" width="22" height="7" rx="3.5" fill="rgba(255,255,255,.2)"/>
-                                <!-- Open shelf superior -->
                                 <rect x="52" y="80" width="344" height="44" rx="2" fill="rgba(0,0,0,.09)"/>
-                                <!-- Patas -->
                                 <rect x="58"  y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
                                 <rect x="184" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
                                 <rect x="308" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
                                 <rect x="370" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
-                                <!-- Borde superior brillante -->
                                 <rect x="42" y="72" width="356" height="2.5" rx="1" fill="rgba(255,255,255,.18)"/>
-                                <!-- TV -->
                                 <rect x="102" y="6" width="216" height="68" rx="7" fill="#0d0d0d"/>
                                 <rect x="106" y="10" width="208" height="56" rx="4" fill="#111827"/>
                                 <rect x="106" y="10" width="208" height="18" rx="4" fill="rgba(255,255,255,.03)"/>
@@ -312,14 +280,12 @@
                     </div>
                 </div>
             </div>
-            <!-- Dots resumen -->
             <div class="px-4 pb-3 flex items-center justify-between">
                 <p class="text-[10px] text-slate-400 flex items-center gap-1"><i class="fa-solid fa-info-circle text-[9px]"></i> Rack flotante con estantes</p>
                 <div class="flex gap-1.5" id="rackDots"></div>
             </div>
         </div>
 
-        <!-- SELECTOR SUPERFICIE RACK -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-4 pt-3 pb-2">
                 <div class="rack-surf-pill">
@@ -340,7 +306,6 @@
             </div>
         </div>
 
-        <!-- PLACAS RACK -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-5 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between">
                 <p class="font-bold text-slate-700 text-sm">Placa para <span id="rackForLabel" class="text-brand-700">Panel</span></p>
@@ -351,7 +316,6 @@
             </div>
         </div>
 
-        <!-- COMBO RACK -->
         <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Combinación actual
@@ -360,9 +324,6 @@
         </div>
     </div>
 
-    <!-- ══════════════════════════════════
-         UNIONES Y TERMINACIONES
-    ══════════════════════════════════ -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-5 pt-4 pb-3 border-b border-slate-50">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -389,36 +350,19 @@
             </div>
         </div>
     </div>
-
 </main>
 
-<script type="module" src="layout.js"></script>
-<script>
-// ═══════════════════════════════════════════════
-// DATOS
-// ═══════════════════════════════════════════════
-const PLACAS = [
-    {id:'blanco',     nombre:'Blanco Liso',     img:'img/blanco.png',         desc:'blanco liso uniforme'},
-    {id:'carrara',    nombre:'Carrara Golden',  img:'img/carrara-golden.jpg', desc:'mármol blanco con vetas doradas elegantes'},
-    {id:'carrarad',   nombre:'Carrara Golden D',img:'img/carrara-goldend.jpg',desc:'mármol blanco con vetas doradas muy intensas'},
-    {id:'madera',     nombre:'Madera Oscura',   img:'img/madera-oscura.jpg',  desc:'efecto madera oscura con vetas horizontales'},
-    {id:'marquina',   nombre:'Marquina',        img:'img/marquina.jpeg',      desc:'mármol negro con vetas blancas finas'},
-    {id:'travertino', nombre:'Travertino',      img:'img/travertino.jpg',     desc:'piedra travertino beige con poros naturales'},
-    {id:'wpf04',      nombre:'WPF-04',          img:'img/WPF-04.jpg',         desc:'marmoleado moderno gris y blanco'},
-    {id:'wpf06',      nombre:'WPF-06',          img:'img/WPF-06.jpg',         desc:'veteado suave crema y blanco'},
-    {id:'wpf08',      nombre:'WPF-08',          img:'img/WPF-08.jpg',         desc:'marmoleado claro y luminoso'},
-    {id:'wpf10',      nombre:'WPF-10',          img:'img/WPF-10.jpg',         desc:'diseño premium tonos beige dorado'},
-    {id:'wpf17',      nombre:'WPF-17',          img:'img/WPF-17.jpg',         desc:'textura piedra natural gris'},
-    {id:'wpf18',      nombre:'WPF-18',          img:'img/WPF-18.jpg',         desc:'vetas marcadas gris oscuro sobre blanco'},
-    {id:'wpf19',      nombre:'WPF-19',          img:'img/WPF-19.jpg',         desc:'blanco mate con micro-vetas sutiles'},
-    {id:'wpf20',      nombre:'WPF-20',          img:'img/WPF-20.jpg',         desc:'marmoleado elegante tonos grises'},
-];
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-const JOINS = [
-    {name:'Ángulo Externo Dorado',  cat:'Perfilería de Lujo',    img:'img/joins/angulo_dorado.jpg',  detail:'Terminación premium en color oro brillante. Ideal para esquinas salientes, protegiendo el borde de la placa.'},
-    {name:'Unión Plana Dorada',     cat:'Perfil H de Transición',img:'img/joins/union_h_dorada.jpg', detail:'Perfil tipo H para unir dos placas en el mismo plano con acabado dorado.'},
-    {name:'Ángulo Externo Plateado',cat:'Perfilería Moderna',    img:'img/joins/angulo_plateado.jpg',detail:'Acabado minimalista aluminio/plata. Perfecto para ambientes modernos y limpios.'},
-];
+<script type="module" src="layout.js"></script>
+
+<script src="products-firestore.js"></script>
+
+<script>
+// CAMBIO 3 y 4: Variables dinámicas
+let PLACAS = []; 
+let JOINS = []; 
 
 const SURF_NAMES = {pared:'Pared',suelo:'Suelo',mesada:'Mesada',techo:'Techo'};
 const SURF_DESCS = {
@@ -431,9 +375,7 @@ const SURF_DESCS = {
 const GEMINI_KEY   = "AIzaSyDvse710O7BaCM053vv4G4lYFC_fiyUe5M";
 const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
 
-// ═══════════════════════════════════════════════
 // ESTADO
-// ═══════════════════════════════════════════════
 const ia = {
     b64:null, mime:null, url:null,
     activeSurf:'pared',
@@ -443,15 +385,30 @@ const ia = {
 const rack = { activeSurf:'panel', selections:{panel:null, pared:null, suelo:null} };
 let joinIdx = 0;
 
-// ═══════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════
+// CAMBIO 5: Lógica de inicialización
 document.addEventListener('DOMContentLoaded', () => {
+    initFromFirestore();
+});
+
+async function initFromFirestore() {
+    let attempts = 0;
+    while (typeof loadProductsFromFirestore === 'undefined' && attempts < 20) {
+        await new Promise(r => setTimeout(r, 100));
+        attempts++;
+    }
+
+    if (typeof loadProductsFromFirestore !== 'undefined') {
+        await loadProductsFromFirestore();
+        if (window.PLACAS_DB && window.PLACAS_DB.length > 0) PLACAS = window.PLACAS_DB;
+        if (window.JOINS_DB  && window.JOINS_DB.length  > 0) JOINS  = window.JOINS_DB;
+    }
+
+    // Inicialización de componentes UI
     renderPlacas('iaPlacaRow',   id => iaSelectPlaca(id));
     renderPlacas('rackPlacaRow', id => rackSelectPlaca(id));
     updateJoin();
     iaUpdateSurfLabel();
-});
+}
 
 // ═══════════════════════════════════════════════
 // TABS
