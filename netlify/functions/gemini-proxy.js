@@ -8,7 +8,7 @@ exports.handler = async (event) => {
     }
 
     const GEMINI_KEY   = process.env.GEMINI_API_KEY;
-    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp-image-generation';
+    const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-image-preview';
 
     if (!GEMINI_KEY) {
         return { statusCode: 500, body: JSON.stringify({ error: 'API key no configurada en el servidor' }) };
