@@ -372,8 +372,8 @@ const SURF_DESCS = {
     techo:'el techo. NO toques paredes ni suelo.',
 };
 
-const GEMINI_KEY   = "AIzaSyDvse710O7BaCM053vv4G4lYFC_fiyUe5M";
-const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
+// GEMINI_KEY movida al servidor (netlify/functions/gemini-proxy.js)
+// NO poner keys en el frontend
 
 // ESTADO
 const ia = {
@@ -631,7 +631,7 @@ Devolvé SOLO la imagen transformada.`;
     ];
 
     const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+        '/.netlify/functions/gemini-proxy',
         {method:'POST',headers:{'Content-Type':'application/json'},
          body:JSON.stringify({contents:[{parts}],generationConfig:{responseModalities:['IMAGE','TEXT'],temperature:0.2}})}
     );
