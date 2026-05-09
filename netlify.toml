@@ -4,6 +4,10 @@
 [functions]
   node_bundler = "esbuild"
 
+# Timeout extendido para gemini-proxy (generación de imágenes puede tardar 25-30s)
+[functions."gemini-proxy"]
+  timeout = 30
+
 # Redirigir el webhook de MP
 [[redirects]]
   from = "/webhook/mp"
