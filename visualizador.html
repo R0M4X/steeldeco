@@ -791,8 +791,40 @@ function prevJoin(){joinIdx=(joinIdx-1+JOINS.length)%JOINS.length;updateJoin();}
 // UTILS
 // ═══════════════════════════════════════════════
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-async function imageUrlToBase64(url){
-    try{const res=await fetch(url);const blob=await res.blob();return await new Promise((ok)=>{const r=new FileReader();r.onload=()=>ok(r.result.split(',')[1]);r.onerror=()=>ok(null);r.readAsDataURL(blob);});}catch{return null;}
+async function imageUrlToBase64(url) {
+    // Intento 1: fetch directo con CORS
+    try {
+        const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+        if (!res.ok) throw new Error('fetch failed');
+        const blob = await res.blob();
+        return await new Promise((ok, fail) => {
+            const r = new FileReader();
+            r.onload = () => ok(r.result.split(',')[1]);
+            r.onerror = () => fail(null);
+            r.readAsDataURL(blob);
+        });
+    } catch {
+        // Intento 2: canvas con crossOrigin (funciona para R2 con CORS habilitado)
+        try {
+            return await new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX = 800;
+                    const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
+                    canvas.width  = Math.round(img.naturalWidth  * ratio);
+                    canvas.height = Math.round(img.naturalHeight * ratio);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const data = canvas.toDataURL('image/jpeg', 0.9);
+                    resolve(data.split(',')[1]);
+                };
+                img.onerror = () => resolve(null);
+                // Cache-buster para evitar respuestas opacas
+                img.src = url.includes('?') ? url : url + '?cb=' + Date.now();
+            });
+        } catch { return null; }
+    }
 }
 </script>
 </body>
