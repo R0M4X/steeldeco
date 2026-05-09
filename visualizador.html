@@ -641,7 +641,7 @@ Devolvé ÚNICAMENTE la imagen transformada.`;
     if (remoteRefs.length > 0) {
         // Mandar la foto del ambiente como base64 + URLs de referencias al proxy
         // El proxy descarga las URLs y arma el request a Gemini
-        const res = await fetch('https://michelinsoftwaresolutions.com.ar/api/gemini', {
+        const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -671,7 +671,7 @@ Devolvé ÚNICAMENTE la imagen transformada.`;
         ...localRefs.map(r => ({ inline_data: { mime_type: 'image/jpeg', data: r.b64 } })),
     ];
 
-    const res = await fetch('https://michelinsoftwaresolutions.com.ar/api/gemini', {
+    const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
