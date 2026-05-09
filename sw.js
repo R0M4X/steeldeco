@@ -4,7 +4,7 @@
 //             Network-first para APIs y CDNs externos
 // ============================================================
 
-const CACHE_VERSION  = 'steel-deco-v3';
+const CACHE_VERSION  = 'steel-deco-v4';
 const CACHE_STATIC   = `${CACHE_VERSION}-static`;
 const CACHE_EXTERNAL = `${CACHE_VERSION}-ext`;
 
