@@ -639,14 +639,13 @@ Devolvé ÚNICAMENTE la imagen transformada.`;
 
     // Si hay URLs remotas, delegar TODO al proxy para que él descargue
     if (remoteRefs.length > 0) {
-        // Mandar la foto del ambiente como base64 + URLs de referencias al proxy
-        // El proxy descarga las URLs y arma el request a Gemini
+        const ambientResized = await resizeAmbientPhoto(1024) || ia.b64;
         const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mode: 'proxy-fetch',
-                ambient: { mime: ia.mime, data: ia.b64 },
+                ambient: { mime: 'image/jpeg', data: ambientResized },
                 refs: entries.map(([surf, placa]) => ({
                     surf,
                     nombre: placa.nombre,
@@ -664,10 +663,11 @@ Devolvé ÚNICAMENTE la imagen transformada.`;
         throw new Error(txt?.text?.slice(0,120)||'Sin imagen en la respuesta');
     }
 
-    // Todas las imágenes son locales — armar el request directamente
+    // Todas las imágenes son locales — redimensionar y armar el request
+    const ambientB64 = await resizeAmbientPhoto(1024) || ia.b64;
     const parts = [
         { text: prompt },
-        { inline_data: { mime_type: ia.mime, data: ia.b64 } },
+        { inline_data: { mime_type: 'image/jpeg', data: ambientB64 } },
         ...localRefs.map(r => ({ inline_data: { mime_type: 'image/jpeg', data: r.b64 } })),
     ];
 
@@ -835,38 +835,51 @@ function prevJoin(){joinIdx=(joinIdx-1+JOINS.length)%JOINS.length;updateJoin();}
 // UTILS
 // ═══════════════════════════════════════════════
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-async function imageUrlToBase64(url) {
-    // Intento 1: fetch directo con CORS
+
+// Redimensiona una imagen (blob o dataURL) a maxPx y devuelve base64 JPEG
+function resizeImageToBase64(src, maxPx=1024, quality=0.85) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
+            const w = Math.round(img.naturalWidth  * ratio);
+            const h = Math.round(img.naturalHeight * ratio);
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const data = canvas.toDataURL('image/jpeg', quality);
+            resolve(data.split(',')[1]);
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
+}
+
+// Convierte la foto del ambiente (ya en ia.b64) a base64 reducida
+async function resizeAmbientPhoto(maxPx=1024) {
+    if (!ia.b64 || !ia.mime) return null;
+    return resizeImageToBase64(`data:${ia.mime};base64,${ia.b64}`, maxPx, 0.88);
+}
+
+async function imageUrlToBase64(url, maxPx=512) {
+    // Intento 1: fetch directo con CORS + resize
     try {
         const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
         if (!res.ok) throw new Error('fetch failed');
         const blob = await res.blob();
-        return await new Promise((ok, fail) => {
+        const dataUrl = await new Promise((ok, fail) => {
             const r = new FileReader();
-            r.onload = () => ok(r.result.split(',')[1]);
+            r.onload = () => ok(r.result);
             r.onerror = () => fail(null);
             r.readAsDataURL(blob);
         });
+        return resizeImageToBase64(dataUrl, maxPx, 0.85);
     } catch {
-        // Intento 2: canvas con crossOrigin (funciona para R2 con CORS habilitado)
+        // Intento 2: img tag con crossOrigin + resize via canvas
         try {
-            return await new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX = 800;
-                    const ratio = Math.min(MAX / img.naturalWidth, MAX / img.naturalHeight, 1);
-                    canvas.width  = Math.round(img.naturalWidth  * ratio);
-                    canvas.height = Math.round(img.naturalHeight * ratio);
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const data = canvas.toDataURL('image/jpeg', 0.9);
-                    resolve(data.split(',')[1]);
-                };
-                img.onerror = () => resolve(null);
-                // Cache-buster para evitar respuestas opacas
-                img.src = url.includes('?') ? url : url + '?cb=' + Date.now();
-            });
+            const src = url.includes('?') ? url : url + '?cb=' + Date.now();
+            return resizeImageToBase64(src, maxPx, 0.85);
         } catch { return null; }
     }
 }
