@@ -98,14 +98,44 @@ function scheduleDaily() {
 }
 async function checkDaily() {
     if (!_user || !_profile) return;
-    if (new Date().getHours() !== 21) return;
+
+    const MAX_FREE     = 10;
+    const isPrivileged = _profile.isInstaller || _profile.isRecommended || _profile.plan === 'destacado';
+    const currentCreds = _profile.credits || 0;
+
+    if (isPrivileged) return;
+    if (currentCreds >= MAX_FREE) return;
+
+    const now  = new Date();
     const last = _profile.lastDailyCredit?.toDate?.() || null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    if (last && last >= today) return;
-    _profile.credits = (_profile.credits || 0) + 1;
+
+    // Calcular días completos pasados desde el último crédito
+    let daysSince = 0;
+    if (!last) {
+        daysSince = 1; // primera vez
+    } else {
+        const lastMidnight = new Date(last);
+        lastMidnight.setHours(0, 0, 0, 0);
+        const nowMidnight = new Date(now);
+        nowMidnight.setHours(0, 0, 0, 0);
+        daysSince = Math.floor((nowMidnight - lastMidnight) / (1000 * 60 * 60 * 24));
+    }
+
+    if (daysSince <= 0) return;
+
+    const toAdd = Math.min(daysSince, MAX_FREE - currentCreds);
+    if (toAdd <= 0) return;
+
+    _profile.credits = currentCreds + toAdd;
     _profile.lastDailyCredit = Timestamp.now();
-    await updateDoc(doc(db,"users",_user.uid), { credits: _profile.credits, lastDailyCredit: _profile.lastDailyCredit });
-    updateHeader(); showToast("⚡ ¡Crédito diario acreditado!");
+
+    await updateDoc(doc(db, "users", _user.uid), {
+        credits:         _profile.credits,
+        lastDailyCredit: _profile.lastDailyCredit
+    });
+
+    updateHeader();
+    showToast(toAdd === 1 ? "⚡ +1 crédito diario!" : `⚡ +${toAdd} créditos acumulados!`);
 }
 async function consumeCredit() {
     if (!_user || !_profile) { showToast("⚠️ Iniciá sesión primero"); return false; }
