@@ -100,72 +100,89 @@
 
     </main>
 
-    <script type="module" src="layout.js"></script>
-    <script src="products.js"></script>
-    
-    <script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-        window.onload = () => {
-            const fill = (sel) => productosDB.forEach(p => {
-                let opt = document.createElement('option');
+    <script type="module" src="layout.js"></script>
+    <script src="products-firestore.js"></script>
+
+    <script>
+        // Esperar a que Firestore cargue y luego llenar los selects
+        document.addEventListener('DOMContentLoaded', async () => {
+            let attempts = 0;
+            while (typeof loadProductsFromFirestore === 'undefined' && attempts < 20) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            if (typeof loadProductsFromFirestore !== 'undefined') {
+                await loadProductsFromFirestore();
+            }
+            const DB = (window.PLACAS_DB && window.PLACAS_DB.length > 0)
+                ? window.PLACAS_DB
+                : [];
+
+            const fill = (sel) => DB.forEach(p => {
+                const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.text = p.nombre;
+                opt.text  = p.nombre;
                 sel.appendChild(opt);
             });
             fill(document.getElementById('sel1'));
             fill(document.getElementById('sel2'));
-        };
+        });
 
         function compare() {
             const id1 = document.getElementById('sel1').value;
             const id2 = document.getElementById('sel2').value;
-            
-            if(id1 && id2) {
+            if (id1 && id2) {
                 document.getElementById('emptyState').classList.add('hidden');
                 document.getElementById('comparisonContainer').classList.remove('hidden');
-                
                 renderCard(id1, 'cardA');
                 renderCard(id2, 'cardB');
             }
         }
 
         function renderCard(id, elementId) {
-            const p = productosDB.find(x => x.id === id);
-            
-            // Icono genérico ya que la nueva DB no tiene iconos individuales
-            const iconHtml = '<i class="fa-solid fa-layer-group text-brand-600"></i>';
+            const DB = window.PLACAS_DB || [];
+            const p  = DB.find(x => x.id === id);
+            if (!p) return;
 
             const html = `
                 <div class="h-40 bg-slate-100 relative">
-                    <img src="${p.imagen}" class="w-full h-full object-cover">
-                    <div class="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-1 rounded text-lg shadow">${iconHtml}</div>
+                    <img src="${p.img}" class="w-full h-full object-cover"
+                         onerror="this.src='https://placehold.co/400x160/e2e8f0/94a3b8?text=${p.nombre}'">
+                    <div class="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-1 rounded text-lg shadow">
+                        <i class="fa-solid fa-layer-group text-brand-600"></i>
+                    </div>
                 </div>
                 <div class="p-5">
                     <h3 class="font-bold text-slate-800 text-lg leading-tight mb-1">${p.nombre}</h3>
-                    <p class="text-xs text-slate-500 mb-4 font-mono">REF: ${p.ref}</p>
-                    
+                    <p class="text-xs text-slate-500 mb-4 font-mono">${p.desc || ''}</p>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                             <span class="text-xs text-slate-400 uppercase font-bold">Tamaño</span>
-                            <span class="font-bold text-slate-700 text-sm">${p.size}</span>
+                            <span class="font-bold text-slate-700 text-sm">${p.size || '1220x2440 mm'}</span>
                         </div>
                         <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                             <span class="text-xs text-slate-400 uppercase font-bold">Espesor</span>
-                            <span class="font-bold text-slate-700">${p.thickness_mm} mm</span>
+                            <span class="font-bold text-slate-700">${p.thickness_mm || 3} mm</span>
                         </div>
                         <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                             <span class="text-xs text-slate-400 uppercase font-bold">Densidad</span>
-                            <span class="font-bold text-brand-600">${p.density_kg_m3} kg/m³</span>
+                            <span class="font-bold text-brand-600">${p.density_kg_m3 || 2000} kg/m³</span>
                         </div>
                         <div>
                             <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Aplicaciones</span>
                             <div class="flex flex-wrap gap-1">
-                                ${p.aplicaciones.map(l => `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">${l}</span>`).join('')}
+                                ${(p.aplicaciones||['Home','Hotel','Restaurant']).map(l =>
+                                    `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">${l}</span>`
+                                ).join('')}
                             </div>
                         </div>
                         <div class="pt-2">
-                            <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Acabados Disponibles</span>
-                             <p class="text-[11px] text-slate-500 leading-tight">${p.surfaceOptions.join(', ')}</p>
+                            <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Acabados</span>
+                            <p class="text-[11px] text-slate-500 leading-tight">${(p.surfaceOptions||[]).join(', ') || p.desc || '—'}</p>
                         </div>
                     </div>
                 </div>
