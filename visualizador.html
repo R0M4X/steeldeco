@@ -227,104 +227,101 @@
             </div>
         </div>
     </div>
-
+    
     <div id="tabRack" class="hidden space-y-4 fade-up">
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-3">
-                <div class="rack-stage" id="rackStage">
-                    <div class="rack-bg-wall" id="rackWall" style="background-color:#ccc8be"></div>
-                    <div class="rack-bg-floor" id="rackFloor" style="background-color:#a89880"></div>
-                    <div class="rack-content">
-                        <div style="width:88%;max-width:400px;position:relative;z-index:10">
-                            <svg viewBox="0 0 420 270" xmlns="http://www.w3.org/2000/svg" style="width:100%;filter:drop-shadow(0 10px 28px rgba(0,0,0,.5))">
-                                <defs>
-                                    <pattern id="rpFront" patternUnits="userSpaceOnUse" width="80" height="80">
-                                        <image id="rpFrontImg" href="" x="0" y="0" width="80" height="80" preserveAspectRatio="xMidYMid slice"/>
-                                    </pattern>
-                                    <pattern id="rpSide" patternUnits="userSpaceOnUse" width="80" height="80">
-                                        <image id="rpSideImg" href="" x="0" y="0" width="80" height="80" preserveAspectRatio="xMidYMid slice"/>
-                                    </pattern>
-                                    <linearGradient id="rGloss" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="rgba(255,255,255,.12)"/>
-                                        <stop offset="100%" stop-color="rgba(0,0,0,.18)"/>
-                                    </linearGradient>
-                                    <linearGradient id="rSideG" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="0%" stop-color="rgba(0,0,0,.45)"/>
-                                        <stop offset="100%" stop-color="rgba(0,0,0,.05)"/>
-                                    </linearGradient>
-                                </defs>
-                                <ellipse cx="210" cy="263" rx="192" ry="7" fill="rgba(0,0,0,.3)"/>
-                                <polygon points="18,88 42,72 42,252 18,262" id="rpSideRect" fill="#7a6a55"/>
-                                <polygon points="18,88 42,72 42,252 18,262" fill="url(#rSideG)" opacity=".8"/>
-                                <rect id="rpFrontRect" x="42" y="72" width="356" height="178" rx="4" fill="#8B7355"/>
-                                <rect x="42" y="72" width="356" height="178" rx="4" fill="url(#rGloss)"/>
-                                <line x1="42" y1="132" x2="398" y2="132" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>
-                                <line x1="42" y1="192" x2="398" y2="192" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>
-                                <rect x="52" y="140" width="108" height="44" rx="3" fill="rgba(0,0,0,.14)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
-                                <rect x="92"  y="159" width="28" height="7" rx="3.5" fill="rgba(255,255,255,.22)"/>
-                                <rect x="170" y="140" width="86" height="44" rx="3" fill="rgba(0,0,0,.11)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
-                                <rect x="203" y="159" width="22" height="7" rx="3.5" fill="rgba(255,255,255,.2)"/>
-                                <rect x="266" y="140" width="86" height="44" rx="3" fill="rgba(0,0,0,.11)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
-                                <rect x="299" y="159" width="22" height="7" rx="3.5" fill="rgba(255,255,255,.2)"/>
-                                <rect x="52" y="80" width="344" height="44" rx="2" fill="rgba(0,0,0,.09)"/>
-                                <rect x="58"  y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
-                                <rect x="184" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
-                                <rect x="308" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
-                                <rect x="370" y="248" width="14" height="14" rx="2.5" fill="#666" opacity=".65"/>
-                                <rect x="42" y="72" width="356" height="2.5" rx="1" fill="rgba(255,255,255,.18)"/>
-                                <rect x="102" y="6" width="216" height="68" rx="7" fill="#0d0d0d"/>
-                                <rect x="106" y="10" width="208" height="56" rx="4" fill="#111827"/>
-                                <rect x="106" y="10" width="208" height="18" rx="4" fill="rgba(255,255,255,.03)"/>
-                                <text x="210" y="43" text-anchor="middle" fill="rgba(255,255,255,.18)" font-size="8" font-family="sans-serif" font-weight="700">STEEL &amp; DECO</text>
-                                <rect x="194" y="74" width="32" height="5" rx="2" fill="#1a1a1a"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
+    
+      <!-- STAGE con foto real -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-3">
+          <div class="rack-stage" id="rackStage" style="aspect-ratio:543/543;position:relative;overflow:hidden;border-radius:16px;">
+    
+            <!-- Foto base del ambiente (fija) -->
+            <img src="img/rack-bg.jpg" id="rackBgPhoto"
+                 class="absolute inset-0 w-full h-full object-cover"
+                 onerror="this.style.display='none'">
+    
+            <!-- Capa de textura para la PARED — recorte aproximado al área de pared blanca -->
+            <!-- La pared ocupa aprox x:0% y:0% w:100% h:72% en la foto -->
+            <div id="rackWallTexture" class="absolute"
+                 style="
+                   top:0; left:0; right:0; height:72%;
+                   background-size:80px 80px;
+                   background-repeat:repeat;
+                   mix-blend-mode:multiply;
+                   opacity:0;
+                   transition:opacity .3s;
+                 ">
             </div>
-            <div class="px-4 pb-3 flex items-center justify-between">
-                <p class="text-[10px] text-slate-400 flex items-center gap-1"><i class="fa-solid fa-info-circle text-[9px]"></i> Rack flotante con estantes</p>
-                <div class="flex gap-1.5" id="rackDots"></div>
+    
+            <!-- Capa de textura para el PISO — parte inferior -->
+            <div id="rackFloorTexture" class="absolute"
+                 style="
+                   bottom:0; left:0; right:0; height:28%;
+                   background-size:60px 60px;
+                   background-repeat:repeat;
+                   mix-blend-mode:multiply;
+                   opacity:0;
+                   transition:opacity .3s;
+                 ">
             </div>
+    
+            <!-- Indicador de combinación activa -->
+            <div class="absolute top-3 left-3 flex gap-1.5" id="rackDots"></div>
+    
+          </div>
         </div>
-
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="px-4 pt-3 pb-2">
-                <div class="rack-surf-pill">
-                    <button class="rack-surf-tab active" id="rTabPanel" onclick="rackSetSurf('panel')">
-                        <i class="fa-solid fa-rectangle-list mr-1"></i>Panel
-                    </button>
-                    <button class="rack-surf-tab" id="rTabPared" onclick="rackSetSurf('pared')">
-                        <i class="fa-solid fa-wall mr-1"></i>Pared
-                    </button>
-                    <button class="rack-surf-tab" id="rTabSuelo" onclick="rackSetSurf('suelo')">
-                        <i class="fa-solid fa-border-all mr-1"></i>Piso
-                    </button>
-                </div>
-            </div>
-            <div class="px-4 pb-1 flex items-center justify-between">
-                <p class="text-[11px] text-slate-400" id="rackSurfDesc">Placa para el panel del rack</p>
-                <button id="rackClearBtn" onclick="rackClearSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg">Quitar</button>
-            </div>
+    
+        <!-- Leyenda -->
+        <div class="px-4 pb-3 flex items-center justify-between">
+          <p class="text-[10px] text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-info-circle text-[9px]"></i> Rack flotante con estantes
+          </p>
+          <span id="rackBlendNote" class="hidden text-[10px] text-brand-600 font-bold bg-brand-50 px-2 py-0.5 rounded-full">Vista previa activa</span>
         </div>
-
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="px-5 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between">
-                <p class="font-bold text-slate-700 text-sm">Placa para <span id="rackForLabel" class="text-brand-700">Panel</span></p>
-                <span id="rackSelectedName" class="hidden text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg"></span>
-            </div>
-            <div class="px-4 py-3">
-                <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="rackPlacaRow"></div>
-            </div>
+      </div>
+    
+      <!-- SELECTOR SUPERFICIE RACK -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-4 pt-3 pb-2">
+          <div class="rack-surf-pill">
+            <button class="rack-surf-tab active" id="rTabPanel" onclick="rackSetSurf('panel')">
+              <i class="fa-solid fa-rectangle-list mr-1"></i>Panel
+            </button>
+            <button class="rack-surf-tab" id="rTabPared" onclick="rackSetSurf('pared')">
+              <i class="fa-solid fa-wall mr-1"></i>Pared
+            </button>
+            <button class="rack-surf-tab" id="rTabSuelo" onclick="rackSetSurf('suelo')">
+              <i class="fa-solid fa-border-all mr-1"></i>Piso
+            </button>
+          </div>
         </div>
-
-        <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Combinación actual
-            </p>
-            <div id="rackComboList" class="space-y-1.5"></div>
+        <div class="px-4 pb-1 flex items-center justify-between">
+          <p class="text-[11px] text-slate-400" id="rackSurfDesc">Placa para el panel del rack</p>
+          <button id="rackClearBtn" onclick="rackClearSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg">Quitar</button>
         </div>
+      </div>
+    
+      <!-- PLACAS RACK -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between">
+          <p class="font-bold text-slate-700 text-sm">Placa para <span id="rackForLabel" class="text-brand-700">Panel</span></p>
+          <span id="rackSelectedName" class="hidden text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg"></span>
+        </div>
+        <div class="px-4 py-3">
+          <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="rackPlacaRow"></div>
+        </div>
+      </div>
+    
+      <!-- COMBO RACK -->
+      <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Combinación actual
+        </p>
+        <div id="rackComboList" class="space-y-1.5"></div>
+      </div>
+    
     </div>
+
 
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-5 pt-4 pb-3 border-b border-slate-50">
