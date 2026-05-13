@@ -771,30 +771,62 @@ function rackClearSurf(){
     document.getElementById('rackClearBtn').classList.add('hidden');
     applyRack(); updateRackCombo();
 }
-function applyRack(){
-    // Panel (SVG pattern)
-    const ps=rack.selections.panel;
-    document.getElementById('rpFrontImg').setAttribute('href',ps?.img||'');
-    document.getElementById('rpSideImg').setAttribute('href',ps?.img||'');
-    document.getElementById('rpFrontRect').setAttribute('fill',ps?'url(#rpFront)':'#8B7355');
-    // Pared
-    const ws=rack.selections.pared;
-    const wall=document.getElementById('rackWall');
-    wall.style.backgroundImage=ws?`url('${ws.img}')`:'';
-    wall.style.backgroundColor=ws?'transparent':'#ccc8be';
-    wall.style.backgroundSize=ws?'80px 80px':'';
-    // Suelo
-    const ss=rack.selections.suelo;
-    const floor=document.getElementById('rackFloor');
-    floor.style.backgroundImage=ss?`url('${ss.img}')`:'';
-    floor.style.backgroundColor=ss?'transparent':'#a89880';
-    floor.style.backgroundSize=ss?'60px 60px':'';
-    // Dots
-    const dots=document.getElementById('rackDots');
-    dots.innerHTML=Object.entries(rack.selections).filter(([,v])=>v).map(([k,p])=>
-        `<div style="width:16px;height:16px;border-radius:5px;background-image:url('${p.img}');background-size:cover;border:1.5px solid rgba(255,255,255,.5)" title="${RACK_LABELS[k]}: ${p.nombre}"></div>`
-    ).join('');
+// ============================================================
+// PARCHE visualizador.html — funciones Rack TV
+// Reemplazá la función applyRack() completa
+// ============================================================
+
+function applyRack() {
+    const ps = rack.selections.panel;
+    const ws = rack.selections.pared;
+    const ss = rack.selections.suelo;
+
+    // ── Pared ──────────────────────────────────────────────
+    const wallTex = document.getElementById('rackWallTexture');
+    if (wallTex) {
+        if (ws) {
+            wallTex.style.backgroundImage = `url('${ws.img}')`;
+            wallTex.style.opacity = '0.55';
+        } else {
+            wallTex.style.backgroundImage = '';
+            wallTex.style.opacity = '0';
+        }
+    }
+
+    // ── Piso ───────────────────────────────────────────────
+    const floorTex = document.getElementById('rackFloorTexture');
+    if (floorTex) {
+        if (ss) {
+            floorTex.style.backgroundImage = `url('${ss.img}')`;
+            floorTex.style.opacity = '0.6';
+        } else {
+            floorTex.style.backgroundImage = '';
+            floorTex.style.opacity = '0';
+        }
+    }
+
+    // ── Panel (todavía no hay superficie en la foto para el rack)
+    // Se muestra solo en el combo como referencia visual
+    // Si en el futuro se agrega una foto con el panel visible, se puede agregar acá
+
+    // ── Indicador de preview activo ────────────────────────
+    const note = document.getElementById('rackBlendNote');
+    if (note) {
+        const anyActive = ws || ss || ps;
+        note.classList.toggle('hidden', !anyActive);
+    }
+
+    // ── Dots resumen ───────────────────────────────────────
+    const dots = document.getElementById('rackDots');
+    if (dots) {
+        dots.innerHTML = Object.entries(rack.selections)
+            .filter(([, v]) => v)
+            .map(([k, p]) =>
+                `<div style="width:20px;height:20px;border-radius:6px;background-image:url('${p.img}');background-size:cover;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)" title="${RACK_LABELS[k]}: ${p.nombre}"></div>`
+            ).join('');
+    }
 }
+
 function updateRackCombo(){
     const entries=Object.entries(rack.selections).filter(([,v])=>v);
     document.getElementById('rackComboWrap').classList.toggle('hidden',entries.length===0);
