@@ -937,13 +937,11 @@ async function rackGenerar() {
 }
 
 async function rackCallGemini(entries) {
-    // Construir descripción de cada superficie — específica para rack TV
-    const surfLines = entries.map(([surf, p]) =>
-        `- ${RACK_SURF_NAMES[surf].toUpperCase()}: aplicá EXACTAMENTE la textura de IMAGEN_REF_${entries.indexOf(entries.find(e=>e[0]===surf))+1} (${p.nombre} — ${p.desc}) en ${RACK_SURF_DESCS[surf]}`
-    ).join('\n');
-
     const refDesc = entries.map(([surf, p], i) =>
         `IMAGEN_REF_${i+1}: textura "${p.nombre}" (${p.desc}) → usar en ${RACK_SURF_NAMES[surf].toLowerCase()}`
+    ).join('\n');
+    const surfLines = entries.map(([surf, p], i) =>
+        `- ${RACK_SURF_NAMES[surf].toUpperCase()}: aplicá EXACTAMENTE la textura de IMAGEN_REF_${i+1} (${p.nombre} — ${p.desc}) en ${RACK_SURF_DESCS[surf]}`
     ).join('\n');
 
     const prompt = `Eres un sistema de renderizado fotorrealista especializado en muebles rack de TV.
@@ -964,52 +962,40 @@ REGLAS ABSOLUTAS:
 6. Resultado fotorrealista profesional, mismas dimensiones que IMAGEN_AMBIENTE.
 Devolvé ÚNICAMENTE la imagen transformada.`;
 
-    const CDN_HOST = 'cdn.michelinsoftwaresolutions.com.ar';
-    const remoteRefs = [];
-    const localRefs  = [];
+    // Foto del usuario → base64 redimensionada
+    const ambientB64 = await resizeImageToBase64(`data:${rack.mime};base64,${rack.b64}`, 1024, 0.88) || rack.b64;
 
-    for (const [surf, placa] of entries) {
-        const isRemote = placa.img.includes(CDN_HOST) || placa.img.startsWith('http');
-        if (isRemote) {
-            remoteRefs.push({ surf, placa, url: placa.img });
-        } else {
-            const b64 = await imageUrlToBase64(placa.img);
-            if (b64) localRefs.push({ surf, placa, b64 });
-            else remoteRefs.push({ surf, placa, url: placa.img });
-        }
-    }
+    // Convertir cada placa a base64 (funciona con CDN y locales por igual)
+    const refB64s = await Promise.all(entries.map(([, placa]) => imageUrlToBase64(placa.img, 512)));
 
-    // Redimensionar foto del usuario del rack
-    const ambientResized = await resizeImageToBase64(`data:${rack.mime};base64,${rack.b64}`, 1024, 0.88) || rack.b64;
-
-    if (remoteRefs.length > 0) {
+    // Si alguna placa no se pudo convertir localmente → proxy-fetch como fallback
+    if (refB64s.some(b => !b)) {
         const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mode: 'proxy-fetch',
-                ambient: { mime: 'image/jpeg', data: ambientResized },
-                refs: entries.map(([surf, placa]) => ({
-                    surf,
-                    nombre: placa.nombre,
-                    desc: placa.desc,
-                    url: placa.img
-                })),
+                ambient: { mime: 'image/jpeg', data: ambientB64 },
+                refs: entries.map(([surf, placa]) => ({ surf, nombre: placa.nombre, desc: placa.desc, url: placa.img })),
                 prompt
             })
         });
-        if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+        if (!res.ok) {
+            const e = await res.json().catch(()=>({}));
+            console.error('[rack proxy-fetch error]', e);
+            throw new Error(e?.error?.message || e?.message || JSON.stringify(e) || `HTTP ${res.status}`);
+        }
         const data = await res.json();
         const rparts = data?.candidates?.[0]?.content?.parts || [];
         for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
-        const txt = rparts.find(p=>p.text);
-        throw new Error(txt?.text?.slice(0,120)||'Sin imagen en la respuesta');
+        throw new Error((rparts.find(p=>p.text)?.text||'Sin imagen en la respuesta').slice(0,120));
     }
 
+    // Todo OK → mandar todo inline, igual que el IA en modo local
     const parts = [
         { text: prompt },
-        { inline_data: { mime_type: 'image/jpeg', data: ambientResized } },
-        ...localRefs.map(r => ({ inline_data: { mime_type: 'image/jpeg', data: r.b64 } })),
+        { inline_data: { mime_type: 'image/jpeg', data: ambientB64 } },
+        ...refB64s.map(b => ({ inline_data: { mime_type: 'image/jpeg', data: b } })),
     ];
     const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
         method: 'POST',
@@ -1019,12 +1005,15 @@ Devolvé ÚNICAMENTE la imagen transformada.`;
             generationConfig: { responseModalities: ['IMAGE','TEXT'], temperature: 0.1 }
         })
     });
-    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+    if (!res.ok) {
+        const e = await res.json().catch(()=>({}));
+        console.error('[rack direct error]', e);
+        throw new Error(e?.error?.message || e?.message || JSON.stringify(e) || `HTTP ${res.status}`);
+    }
     const data = await res.json();
     const rparts = data?.candidates?.[0]?.content?.parts || [];
     for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
-    const txt = rparts.find(p=>p.text);
-    throw new Error(txt?.text?.slice(0,120)||'Sin imagen en la respuesta');
+    throw new Error((rparts.find(p=>p.text)?.text||'Sin imagen en la respuesta').slice(0,120));
 }
 
 function rackShowResult(rb64, entries) {
