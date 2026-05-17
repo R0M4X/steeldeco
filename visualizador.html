@@ -784,6 +784,1079 @@ function iaReset(){
 // ═══════════════════════════════════════════════
 const RACK_SURF_NAMES = { panel:'Panel TV', pared:'Pared lateral' };
 const RACK_SURF_DESCS = {
+    panel: 'el PANEL DECORATIVO rectangular que está directamente detrás del televisor. Es el fondo del TV, un rectángulo con bordes definidos. La textura debe quedar CENTRADA y CONTENIDA dentro de ese rectángulo exacto. NO toques la pared ni nada fuera del panel.',
+    pared: 'las zonas de PARED LISA visibles a los costados del rack, a una distancia considerable de cada lado del mueble. Son las franjas de pared descubierta a izquierda y derecha. NO toques el panel del TV ni el mueble.',
+};
+
+// ── FOTO ──────────────────────────────────────────────────
+function rackHandlePhoto(e) {
+    const f = e.target.files[0]; if (!f) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const data = ev.target.result;
+        rack.b64 = data.split(',')[1]; rack.mime = f.type||'image/jpeg'; rack.url = data;
+        document.getElementById('rackPlaceholder').classList.add('hidden');
+        document.getElementById('rackPreviewWrap').classList.remove('hidden');
+        document.getElementById('rackPreviewImg').src = data;
+        const z = document.getElementById('rackUploadZone');
+        z.classList.add('has-img'); z.style.borderStyle='solid'; z.style.borderColor='#10b981';
+        rackUpdateBtn();
+    };
+    reader.readAsDataURL(f);
+}
+function rackClearPhoto() {
+    rack.b64 = rack.mime = rack.url = null;
+    document.getElementById('rackPlaceholder').classList.remove('hidden');
+    document.getElementById('rackPreviewWrap').classList.add('hidden');
+    const z = document.getElementById('rackUploadZone');
+    z.classList.remove('has-img'); z.style.borderStyle='dashed'; z.style.borderColor='#cbd5e1';
+    rackUpdateBtn();
+}
+
+// ── SUPERFICIES ───────────────────────────────────────────
+function rackSetActiveSurf(surf) {
+    rack.activeSurf = surf;
+    Object.keys(rack.selections).forEach(k => {
+        document.getElementById('rackSurf'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.toggle('active', k===surf);
+    });
+    rackUpdateSurfLabel();
+    const sel = rack.selections[surf];
+    setActiveChip('rackPlacaRow', sel?.id||'__none__');
+    document.getElementById('rackClearSurfBtn').classList.toggle('hidden', !sel);
+}
+function rackUpdateSurfLabel() {
+    document.getElementById('rackSurfLabel').textContent = RACK_SURF_NAMES[rack.activeSurf];
+}
+function rackSelectPlaca(id) {
+    const placa = PLACAS.find(p=>p.id===id);
+    rack.selections[rack.activeSurf] = placa;
+    setActiveChip('rackPlacaRow', id);
+    document.getElementById(`rackPlacaRow_${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    document.getElementById('rackClearSurfBtn').classList.remove('hidden');
+    const dot = document.getElementById('rackDot'+rack.activeSurf.charAt(0).toUpperCase()+rack.activeSurf.slice(1));
+    if (dot) { dot.style.backgroundImage=`url('${placa.img}')`; dot.style.backgroundSize='cover'; }
+    document.getElementById('rackSurf'+rack.activeSurf.charAt(0).toUpperCase()+rack.activeSurf.slice(1))?.classList.add('has-placa');
+    rackUpdateCombo();
+    rackUpdateBtn();
+}
+function rackClearActiveSurf() {
+    rack.selections[rack.activeSurf] = null;
+    setActiveChip('rackPlacaRow', '__none__');
+    document.getElementById('rackClearSurfBtn').classList.add('hidden');
+    const dot = document.getElementById('rackDot'+rack.activeSurf.charAt(0).toUpperCase()+rack.activeSurf.slice(1));
+    if (dot) dot.style.backgroundImage='';
+    document.getElementById('rackSurf'+rack.activeSurf.charAt(0).toUpperCase()+rack.activeSurf.slice(1))?.classList.remove('has-placa');
+    rackUpdateCombo();
+    rackUpdateBtn();
+}
+function rackClearAll() {
+    Object.keys(rack.selections).forEach(k => {
+        rack.selections[k] = null;
+        const dot = document.getElementById('rackDot'+k.charAt(0).toUpperCase()+k.slice(1));
+        if (dot) dot.style.backgroundImage='';
+        document.getElementById('rackSurf'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.remove('has-placa');
+    });
+    setActiveChip('rackPlacaRow','__none__');
+    document.getElementById('rackClearSurfBtn').classList.add('hidden');
+    rackUpdateCombo(); rackUpdateBtn();
+}
+function rackUpdateCombo() {
+    const entries = Object.entries(rack.selections).filter(([,v])=>v);
+    document.getElementById('rackComboWrap').classList.toggle('hidden', entries.length===0);
+    document.getElementById('rackComboList').innerHTML = entries.map(([surf,p])=>`
+        <div class="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+            <img src="${p.img}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-slate-100">
+            <div class="flex-1 min-w-0">
+                <p class="font-extrabold text-slate-700 text-xs">${RACK_SURF_NAMES[surf]}</p>
+                <p class="text-slate-400 text-[11px] truncate">${p.nombre}</p>
+            </div>
+            <button onclick="rack.activeSurf='${surf}';rackClearActiveSurf()" class="w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center text-xs active:scale-90 transition-transform border-none cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>`).join('');
+}
+function rackUpdateBtn() {
+    const hasSel = Object.values(rack.selections).some(v=>v);
+    const ok = rack.b64 && hasSel && !rack.busy;
+    const btn = document.getElementById('rackBtnGenerar');
+    btn.disabled = !ok;
+    btn.className = `w-full py-4 rounded-2xl font-extrabold text-sm transition-all active:scale-[.98] ${ok ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/25 cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`;
+    if (ok) {
+        const count = Object.values(rack.selections).filter(v=>v).length;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar ${count} superficie${count>1?'s':''} · 1 crédito`;
+    } else {
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito`;
+    }
+}
+
+// ── GENERAR ───────────────────────────────────────────────
+const RACK_IA_STEPS = [
+    {msg:'Analizando tu rack...',       sub:'Detectando panel y proporciones',    pct:15},
+    {msg:'Aplicando las placas...',     sub:'Procesando texturas',                pct:40},
+    {msg:'Reimaginando el rack...',     sub:'Manteniendo muebles y estructura',   pct:65},
+    {msg:'Ajustando iluminación...',    sub:'Sombras y reflejos realistas',       pct:85},
+    {msg:'Finalizando...',              sub:'Revisión de calidad',                pct:95},
+];
+
+async function rackGenerar() {
+    if (!rack.b64 || rack.busy) return;
+    const entries = Object.entries(rack.selections).filter(([,v])=>v);
+    if (!entries.length) return;
+
+    if (window.consumeCredit) { const ok=await window.consumeCredit(); if(!ok) return; }
+
+    rack.busy=true; rackUpdateBtn();
+    document.getElementById('rackGenOverlay').classList.remove('hidden');
+    document.getElementById('rackPlaceholder2').classList.add('hidden');
+
+    let si=0;
+    const iv=setInterval(()=>{
+        if(si<RACK_IA_STEPS.length){
+            const st=RACK_IA_STEPS[si];
+            document.getElementById('rackGenStep').textContent=st.msg;
+            document.getElementById('rackGenSub').textContent=st.sub;
+            document.getElementById('rackProgFill').style.width=st.pct+'%';
+            si++;
+        }
+    },1800);
+
+    try {
+        const rb64 = await rackCallGemini(entries);
+        clearInterval(iv);
+        document.getElementById('rackProgFill').style.width='100%';
+        await sleep(400);
+        rackShowResult(rb64, entries);
+    } catch(err) {
+        clearInterval(iv);
+        document.getElementById('rackGenOverlay').classList.add('hidden');
+        document.getElementById('rackPlaceholder2').classList.remove('hidden');
+        rack.busy=false; rackUpdateBtn();
+        if(window.refundCredit){await window.refundCredit();window.showToast?.('↩️ Crédito devuelto');}
+        setTimeout(()=>window.showToast?.('⚠️ '+(err.message||'Error').slice(0,80)),1500);
+        console.error(err);
+    }
+}
+
+async function rackCallGemini(entries) {
+    const refDesc = entries.map(([surf, p], i) =>
+        `IMAGEN_REF_${i+1}: textura "${p.nombre}" (${p.desc}) → usar en ${RACK_SURF_NAMES[surf].toLowerCase()}`
+    ).join('\n');
+    const surfLines = entries.map(([surf, p], i) =>
+        `- ${RACK_SURF_NAMES[surf].toUpperCase()}: aplicá EXACTAMENTE la textura de IMAGEN_REF_${i+1} (${p.nombre} — ${p.desc}) en ${RACK_SURF_DESCS[surf]}`
+    ).join('\n');
+
+    const prompt = `Eres un sistema de renderizado fotorrealista especializado en muebles rack de TV.
+
+Recibirás imágenes en este orden:
+- IMAGEN_AMBIENTE: foto del rack / mueble TV a modificar (primera imagen)
+${refDesc}
+
+INSTRUCCIONES PRECISAS:
+${surfLines}
+
+DEFINICIONES CRÍTICAS:
+- PANEL TV = el rectángulo decorativo de fondo ÚNICAMENTE detrás de la pantalla del televisor. Es un panel con forma y bordes definidos, separado de la pared. Ocupa exactamente el área detrás del TV, ni más ni menos. La placa debe verse CENTRADA y CONTENIDA dentro de ese rectángulo, con sus bordes respetados.
+- PARED LATERAL = las zonas de pared lisa a AMBOS LADOS del conjunto rack+panel, a una distancia considerable. NO es el panel del TV. NO es toda la pared.
+
+REGLAS ABSOLUTAS:
+1. Copiá FIELMENTE el patrón, color y veteado de cada IMAGEN_REF — NO inventes ni uses texturas genéricas.
+2. El panel del TV tiene bordes definidos — la textura aplicada debe quedar CONTENIDA dentro de esos bordes exactos, como si fuera un revestimiento adherido al panel.
+3. TODO lo que está fuera del área especificada queda IDÉNTICO: TV, pantalla, cajones, estantes, objetos, iluminación LED, listones de madera, el propio mueble.
+4. NO apliques la textura del panel en la pared ni viceversa.
+5. Respetá perspectiva 3D, geometría, iluminación y sombras originales.
+6. Resultado fotorrealista profesional, mismas dimensiones que IMAGEN_AMBIENTE.
+Devolvé ÚNICAMENTE la imagen transformada, sin texto ni explicaciones.`;
+
+    // Foto del usuario → base64 redimensionada
+    const ambientB64 = await resizeImageToBase64(`data:${rack.mime};base64,${rack.b64}`, 1024, 0.88) || rack.b64;
+
+    // Convertir cada placa a base64 (funciona con CDN y locales por igual)
+    const refB64s = await Promise.all(entries.map(([, placa]) => imageUrlToBase64(placa.img, 512)));
+
+    // Si alguna placa no se pudo convertir localmente → proxy-fetch como fallback
+    if (refB64s.some(b => !b)) {
+        const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'proxy-fetch',
+                ambient: { mime: 'image/jpeg', data: ambientB64 },
+                refs: entries.map(([surf, placa]) => ({ surf, nombre: placa.nombre, desc: placa.desc, url: placa.img })),
+                prompt
+            })
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(()=>({}));
+            console.error('[rack proxy-fetch error]', e);
+            throw new Error(e?.error?.message || e?.message || JSON.stringify(e) || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const rparts = data?.candidates?.[0]?.content?.parts || [];
+        for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
+        throw new Error((rparts.find(p=>p.text)?.text||'Sin imagen en la respuesta').slice(0,120));
+    }
+
+    // Todo OK → mandar todo inline, igual que el IA en modo local
+    const parts = [
+        { text: prompt },
+        { inline_data: { mime_type: 'image/jpeg', data: ambientB64 } },
+        ...refB64s.map(b => ({ inline_data: { mime_type: 'image/jpeg', data: b } })),
+    ];
+    const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { responseModalities: ['IMAGE','TEXT'], temperature: 0.1 }
+        })
+    });
+    if (!res.ok) {
+        const e = await res.json().catch(()=>({}));
+        console.error('[rack direct error]', e);
+        throw new Error(e?.error?.message || e?.message || JSON.stringify(e) || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const rparts = data?.candidates?.[0]?.content?.parts || [];
+    for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
+    throw new Error((rparts.find(p=>p.text)?.text||'Sin imagen en la respuesta').slice(0,120));
+}
+
+function rackShowResult(rb64, entries) {
+    const url=`data:image/png;base64,${rb64}`;
+    rack.resultUrl=url;
+    const img=document.getElementById('rackResultImg');
+    img.src=url;
+    img.onload=()=>{
+        document.getElementById('rackGenOverlay').classList.add('hidden');
+        img.classList.remove('hidden');
+        document.getElementById('rackResultBadge').classList.remove('hidden');
+        const tag=document.getElementById('rackResultTag');
+        tag.textContent=entries.map(([s,p])=>`${RACK_SURF_NAMES[s]}: ${p.nombre}`).join(' · ');
+        tag.classList.remove('hidden');
+        rackSetupCompare();
+        document.getElementById('rackResultActions').classList.remove('hidden');
+        rack.busy=false; rackUpdateBtn();
+        window.showToast?.('✨ ¡Visualización lista!');
+    };
+}
+function rackSetupCompare() {
+    if(!rack.url||!rack.resultUrl) return;
+    document.getElementById('rackCompBefore').src=rack.url;
+    document.getElementById('rackCompAfter').src=rack.resultUrl;
+    document.getElementById('rackCompareSection').classList.remove('hidden');
+    const wrap=document.getElementById('rackCompareWrap'),
+          handle=document.getElementById('rackCompHandle'),
+          ov=document.getElementById('rackCompOv');
+    let drag=false;
+    const set=cx=>{const r=wrap.getBoundingClientRect();let p=Math.max(.02,Math.min(.98,(cx-r.left)/r.width));handle.style.left=(p*100)+'%';ov.style.width=(p*100)+'%';};
+    wrap.addEventListener('mousedown',e=>{drag=true;set(e.clientX);});
+    wrap.addEventListener('touchstart',e=>{drag=true;set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener('mousemove',e=>{if(drag)set(e.clientX);});
+    document.addEventListener('touchmove',e=>{if(drag)set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener('mouseup',()=>drag=false);
+    document.addEventListener('touchend',()=>drag=false);
+}
+async function rackDownload(){if(!rack.resultUrl)return;const a=document.createElement('a');a.href=rack.resultUrl;a.download='steel-deco-rack.png';a.click();window.showToast?.('📥 Guardada');}
+async function rackShare(){if(!rack.resultUrl)return;try{const blob=await(await fetch(rack.resultUrl)).blob();const f=new File([blob],'steel-deco-rack.png',{type:'image/png'});if(navigator.share&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Steel & Deco'});else rackDownload();}catch{rackDownload();}}
+function rackIaReset(){
+    rack.resultUrl=null;
+    document.getElementById('rackResultImg').classList.add('hidden');
+    document.getElementById('rackResultImg').src='';
+    document.getElementById('rackResultBadge').classList.add('hidden');
+    document.getElementById('rackResultTag').classList.add('hidden');
+    document.getElementById('rackResultActions').classList.add('hidden');
+    document.getElementById('rackCompareSection').classList.add('hidden');
+    document.getElementById('rackPlaceholder2').classList.remove('hidden');
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════════
+// JOINS
+// ═══════════════════════════════════════════════
+function updateJoin(){
+    const j=JOINS[joinIdx];
+    const img=document.getElementById('joinImage');
+    img.style.opacity='0';
+    setTimeout(()=>{
+        img.src=j.img;
+        document.getElementById('joinTitle').textContent=j.name;
+        document.getElementById('joinCat').textContent=j.cat;
+        document.getElementById('joinDetail').textContent=j.detail;
+        document.getElementById('joinIdx').textContent=joinIdx+1;
+        document.getElementById('joinTotal').textContent=JOINS.length;
+        img.onload=()=>img.style.opacity='1';
+        setTimeout(()=>img.style.opacity='1',200);
+    },150);
+}
+function nextJoin(){joinIdx=(joinIdx+1)%JOINS.length;updateJoin();}
+function prevJoin(){joinIdx=(joinIdx-1+JOINS.length)%JOINS.length;updateJoin();}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// Redimensiona una imagen (blob o dataURL) a maxPx y devuelve base64 JPEG
+function resizeImageToBase64(src, maxPx=1024, quality=0.85) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
+            const w = Math.round(img.naturalWidth  * ratio);
+            const h = Math.round(img.naturalHeight * ratio);
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const data = canvas.toDataURL('image/jpeg', quality);
+            resolve(data.split(',')[1]);
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
+}
+
+// Convierte la foto del ambiente (ya en ia.b64) a base64 reducida
+async function resizeAmbientPhoto(maxPx=1024) {
+    if (!ia.b64 || !ia.mime) return null;
+    return resizeImageToBase64(`data:${ia.mime};base64,${ia.b64}`, maxPx, 0.88);
+}
+
+async function imageUrlToBase64(url, maxPx=512) {
+    // Intento 1: fetch directo con CORS + resize
+    try {
+        const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+        if (!res.ok) throw new Error('fetch failed');
+        const blob = await res.blob();
+        const dataUrl = await new Promise((ok, fail) => {
+            const r = new FileReader();
+            r.onload = () => ok(r.result);
+            r.onerror = () => fail(null);
+            r.readAsDataURL(blob);
+        });
+        return resizeImageToBase64(dataUrl, maxPx, 0.85);
+    } catch {
+        // Intento 2: img tag con crossOrigin + resize via canvas
+        try {
+            const src = url.includes('?') ? url : url + '?cb=' + Date.now();
+            return resizeImageToBase64(src, maxPx, 0.85);
+        } catch { return null; }
+    }
+}
+</script>
+</body>
+</html><main class="px-4 max-w-xl mx-auto space-y-4" style="padding-top:84px;padding-bottom:110px">
+
+    <div>
+        <h2 class="text-xl font-extrabold text-slate-800 leading-none">Visualizador</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Probá las placas en tu espacio</p>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tabBtnIA" onclick="setTab('ia')">
+            <i class="fa-solid fa-wand-magic-sparkles text-sm"></i> Visualizador IA
+        </button>
+        <button class="tab-btn" id="tabBtnRack" onclick="setTab('rack')">
+            <i class="fa-solid fa-tv text-sm"></i> Rack TV
+        </button>
+    </div>
+
+    <div id="tabIA" class="space-y-4 fade-up">
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+                <p class="font-bold text-slate-700 text-sm">Subí tu foto</p>
+            </div>
+            <div class="p-4">
+                <div id="iaUploadZone" class="upload-zone">
+                    <div id="iaPlaceholder" class="flex flex-col items-center justify-center gap-3 py-9 px-4 text-center">
+                        <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-camera text-brand-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700 text-sm">Foto de tu ambiente</p>
+                            <p class="text-xs text-slate-400 mt-1">Sacá una foto o elegí desde galería</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('iaCamInput').click()" class="flex items-center gap-2 bg-brand-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                                <i class="fa-solid fa-camera"></i> Cámara
+                            </button>
+                            <button onclick="document.getElementById('iaGalInput').click()" class="flex items-center gap-2 bg-slate-100 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                                <i class="fa-solid fa-image"></i> Galería
+                            </button>
+                        </div>
+                    </div>
+                    <div id="iaPreviewWrap" class="hidden relative">
+                        <img id="iaPreviewImg" class="w-full rounded-[14px] object-cover" style="max-height:300px;object-fit:cover">
+                        <button onclick="iaClearPhoto()" class="absolute top-3 right-3 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center text-xs active:scale-90 transition-transform"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="document.getElementById('iaGalInput').click()" class="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full"><i class="fa-solid fa-arrows-rotate text-[10px]"></i> Cambiar</button>
+                    </div>
+                </div>
+                <input type="file" id="iaCamInput" accept="image/*" capture="environment" onchange="iaHandlePhoto(event)">
+                <input type="file" id="iaGalInput" accept="image/*" onchange="iaHandlePhoto(event)">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <p class="font-bold text-slate-700 text-sm">Elegí la placa por superficie</p>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                    <button class="surf-btn active" id="iaSurfPared" onclick="iaSetActiveSurf('pared')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="iaDotPared"></div>
+                        <i class="fa-solid fa-wall text-sm"></i>
+                        <span>Pared</span>
+                    </button>
+                    <button class="surf-btn" id="iaSurfSuelo" onclick="iaSetActiveSurf('suelo')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="iaDotSuelo"></div>
+                        <i class="fa-solid fa-border-all text-sm"></i>
+                        <span>Suelo</span>
+                    </button>
+                    <button class="surf-btn" id="iaSurfMesada" onclick="iaSetActiveSurf('mesada')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="iaDotMesada"></div>
+                        <i class="fa-solid fa-kitchen-set text-sm"></i>
+                        <span>Mesada</span>
+                    </button>
+                    <button class="surf-btn" id="iaSurfTecho" onclick="iaSetActiveSurf('techo')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="iaDotTecho"></div>
+                        <i class="fa-solid fa-house-chimney text-sm"></i>
+                        <span>Techo</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-slate-500">Placa para <strong id="iaSurfLabel" class="text-slate-700">Pared</strong></p>
+                    <button id="iaClearSurfBtn" onclick="iaClearActiveSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg active:scale-95 transition-transform">Quitar placa</button>
+                </div>
+                <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="iaPlacaRow"></div>
+            </div>
+        </div>
+
+        <div id="iaComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-1 flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Tu combinación
+                </p>
+                <button onclick="iaClearAll()" class="text-[10px] text-red-400 font-semibold">Limpiar todo</button>
+            </div>
+            <div id="iaComboList" class="px-4 pb-3 space-y-1.5 mt-2"></div>
+        </div>
+
+        <button id="iaBtnGenerar" onclick="iaGenerar()" disabled
+            class="w-full py-4 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 cursor-not-allowed transition-all active:scale-[.98]">
+            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito
+        </button>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sparkles text-brand-600 text-sm"></i>
+                    <p class="font-bold text-slate-700 text-sm">Tu visualización</p>
+                </div>
+                <span id="iaResultTag" class="hidden text-[10px] font-bold text-white bg-brand-700 px-2.5 py-1 rounded-full"></span>
+            </div>
+            <div class="p-4 space-y-3">
+                <div id="iaResultWrap" class="relative rounded-2xl overflow-hidden bg-slate-100" style="min-height:160px">
+                    <img id="iaResultImg" class="w-full rounded-2xl hidden">
+                    <div id="iaResultBadge" class="hidden absolute top-3 left-3 bg-brand-900/80 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full">✨ IA Generado</div>
+                    <div id="iaGenOverlay" class="hidden absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(6,78,59,.9)">
+                        <div class="gen-ring"></div>
+                        <p class="text-white font-bold text-sm" id="iaGenStep">Analizando...</p>
+                        <div class="prog-bar"><div class="prog-fill" id="iaProgFill" style="width:5%"></div></div>
+                        <p class="text-green-300 text-[11px]" id="iaGenSub">Preparando</p>
+                    </div>
+                    <div id="iaPlaceholder2" class="flex items-center justify-center" style="min-height:160px">
+                        <div class="text-center text-slate-300">
+                            <i class="fa-solid fa-wand-magic-sparkles text-3xl mb-2"></i>
+                            <p class="text-xs">Completá los pasos y generá</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="iaCompareSection" class="hidden">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">← Deslizá para comparar →</p>
+                    <div class="compare-wrap" id="iaCompareWrap">
+                        <img id="iaCompAfter" src="">
+                        <div class="compare-ov" id="iaCompOv" style="width:50%"><img id="iaCompBefore" src=""></div>
+                        <div class="compare-handle" id="iaCompHandle" style="left:50%"></div>
+                    </div>
+                </div>
+
+                <div id="iaResultActions" class="hidden flex gap-2">
+                    <button onclick="iaDownload()" class="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-download"></i> Guardar
+                    </button>
+                    <button onclick="iaShare()" class="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-700 text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-share-nodes"></i> Compartir
+                    </button>
+                    <button onclick="iaReset()" class="flex items-center justify-center bg-slate-100 text-slate-700 text-sm font-bold py-3 px-4 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="tabRack" class="hidden space-y-4 fade-up">
+
+        <!-- PASO 1: SUBIR FOTO -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+                <p class="font-bold text-slate-700 text-sm">Subí la foto de tu rack</p>
+            </div>
+            <div class="p-4">
+                <div id="rackUploadZone" class="upload-zone">
+                    <div id="rackPlaceholder" class="flex flex-col items-center justify-center gap-3 py-9 px-4 text-center">
+                        <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center">
+                            <i class="fa-solid fa-tv text-brand-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700 text-sm">Foto de tu rack / mueble TV</p>
+                            <p class="text-xs text-slate-400 mt-1">Sacá una foto o elegí desde galería</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('rackCamInput').click()" class="flex items-center gap-2 bg-brand-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                                <i class="fa-solid fa-camera"></i> Cámara
+                            </button>
+                            <button onclick="document.getElementById('rackGalInput').click()" class="flex items-center gap-2 bg-slate-100 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition-transform">
+                                <i class="fa-solid fa-image"></i> Galería
+                            </button>
+                        </div>
+                    </div>
+                    <div id="rackPreviewWrap" class="hidden relative">
+                        <img id="rackPreviewImg" class="w-full rounded-[14px] object-cover" style="max-height:300px;object-fit:cover">
+                        <button onclick="rackClearPhoto()" class="absolute top-3 right-3 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center text-xs active:scale-90 transition-transform"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="document.getElementById('rackGalInput').click()" class="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full"><i class="fa-solid fa-arrows-rotate text-[10px]"></i> Cambiar</button>
+                    </div>
+                </div>
+                <input type="file" id="rackCamInput" accept="image/*" capture="environment" onchange="rackHandlePhoto(event)">
+                <input type="file" id="rackGalInput" accept="image/*" onchange="rackHandlePhoto(event)">
+            </div>
+        </div>
+
+        <!-- PASO 2: ELEGIR PLACA POR SUPERFICIE -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <p class="font-bold text-slate-700 text-sm">Elegí la placa por superficie</p>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                    <button class="surf-btn active" id="rackSurfPanel" onclick="rackSetActiveSurf('panel')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="rackDotPanel"></div>
+                        <i class="fa-solid fa-tv text-sm"></i>
+                        <span>Panel TV</span>
+                    </button>
+                    <button class="surf-btn" id="rackSurfPared" onclick="rackSetActiveSurf('pared')">
+                        <div class="surf-check"><i class="fa-solid fa-check" style="font-size:7px"></i></div>
+                        <div class="surf-preview-dot" id="rackDotPared"></div>
+                        <i class="fa-solid fa-wall text-sm"></i>
+                        <span>Pared</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-slate-500">Placa para <strong id="rackSurfLabel" class="text-slate-700">Panel TV</strong></p>
+                    <button id="rackClearSurfBtn" onclick="rackClearActiveSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg active:scale-95 transition-transform">Quitar placa</button>
+                </div>
+                <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="rackPlacaRow"></div>
+            </div>
+        </div>
+
+        <!-- COMBO RACK -->
+        <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-1 flex items-center justify-between">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Tu combinación
+                </p>
+                <button onclick="rackClearAll()" class="text-[10px] text-red-400 font-semibold">Limpiar todo</button>
+            </div>
+            <div id="rackComboList" class="px-4 pb-3 space-y-1.5 mt-2"></div>
+        </div>
+
+        <!-- BTN GENERAR -->
+        <button id="rackBtnGenerar" onclick="rackGenerar()" disabled
+            class="w-full py-4 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 cursor-not-allowed transition-all active:scale-[.98]">
+            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito
+        </button>
+
+        <!-- RESULTADO -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sparkles text-brand-600 text-sm"></i>
+                    <p class="font-bold text-slate-700 text-sm">Tu visualización</p>
+                </div>
+                <span id="rackResultTag" class="hidden text-[10px] font-bold text-white bg-brand-700 px-2.5 py-1 rounded-full"></span>
+            </div>
+            <div class="p-4 space-y-3">
+                <div id="rackResultWrap" class="relative rounded-2xl overflow-hidden bg-slate-100" style="min-height:160px">
+                    <img id="rackResultImg" class="w-full rounded-2xl hidden">
+                    <div id="rackResultBadge" class="hidden absolute top-3 left-3 bg-brand-900/80 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full">✨ IA Generado</div>
+                    <div id="rackGenOverlay" class="hidden absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(6,78,59,.9)">
+                        <div class="gen-ring"></div>
+                        <p class="text-white font-bold text-sm" id="rackGenStep">Analizando...</p>
+                        <div class="prog-bar"><div class="prog-fill" id="rackProgFill" style="width:5%"></div></div>
+                        <p class="text-green-300 text-[11px]" id="rackGenSub">Preparando</p>
+                    </div>
+                    <div id="rackPlaceholder2" class="flex items-center justify-center" style="min-height:160px">
+                        <div class="text-center text-slate-300">
+                            <i class="fa-solid fa-wand-magic-sparkles text-3xl mb-2"></i>
+                            <p class="text-xs">Completá los pasos y generá</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="rackCompareSection" class="hidden">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">← Deslizá para comparar →</p>
+                    <div class="compare-wrap" id="rackCompareWrap">
+                        <img id="rackCompAfter" src="">
+                        <div class="compare-ov" id="rackCompOv" style="width:50%"><img id="rackCompBefore" src=""></div>
+                        <div class="compare-handle" id="rackCompHandle" style="left:50%"></div>
+                    </div>
+                </div>
+
+                <div id="rackResultActions" class="hidden flex gap-2">
+                    <button onclick="rackDownload()" class="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-download"></i> Guardar
+                    </button>
+                    <button onclick="rackShare()" class="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-700 text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-share-nodes"></i> Compartir
+                    </button>
+                    <button onclick="rackIaReset()" class="flex items-center justify-center bg-slate-100 text-slate-700 text-sm font-bold py-3 px-4 rounded-xl active:scale-95 transition-transform">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-puzzle-piece"></i> Uniones y Terminaciones
+            </p>
+        </div>
+        <div class="p-4">
+            <div class="relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
+                <div class="relative" style="aspect-ratio:3/4">
+                    <img id="joinImage" src="" class="w-full h-full object-contain bg-white transition-opacity duration-300">
+                    <div class="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
+                        <button onclick="prevJoin()" class="pointer-events-auto w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-md text-brand-700 border-none cursor-pointer active:scale-90 transition-transform"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <button onclick="nextJoin()" class="pointer-events-auto w-8 h-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-md text-brand-700 border-none cursor-pointer active:scale-90 transition-transform"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                    </div>
+                    <div class="absolute top-3 right-3 bg-black/60 backdrop-blur px-2 py-1 rounded-full text-[10px] font-bold text-white">
+                        <span id="joinIdx">1</span>/<span id="joinTotal">3</span>
+                    </div>
+                </div>
+                <div class="p-4 bg-white border-t border-slate-100">
+                    <h4 id="joinTitle" class="text-base font-bold text-slate-800 mb-1">—</h4>
+                    <p id="joinCat" class="text-xs text-brand-600 font-bold uppercase tracking-wide mb-2">—</p>
+                    <p id="joinDetail" class="text-sm text-slate-500 leading-relaxed">—</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script type="module" src="layout.js"></script>
+
+<script src="products-firestore.js"></script>
+
+<script>
+// CAMBIO 3 y 4: Variables dinámicas
+let PLACAS = []; 
+let JOINS = []; 
+
+const SURF_NAMES = {pared:'Pared',suelo:'Suelo',mesada:'Mesada',techo:'Techo'};
+const SURF_DESCS = {
+    pared:'superficies verticales (paredes de fondo y laterales). NO toques suelo ni techo.',
+    suelo:'el suelo/piso. NO toques paredes ni techo.',
+    mesada:'la mesada/encimera de la cocina (superficie horizontal de trabajo). NO toques paredes ni piso.',
+    techo:'el techo. NO toques paredes ni suelo.',
+};
+
+// GEMINI_KEY movida al servidor (netlify/functions/gemini-proxy.js)
+// NO poner keys en el frontend
+
+// ESTADO
+const ia = {
+    b64:null, mime:null, url:null,
+    activeSurf:'pared',
+    selections:{pared:null, suelo:null, mesada:null, techo:null},
+    resultUrl:null, busy:false
+};
+const rack = { b64:null, mime:null, url:null, activeSurf:'panel', selections:{panel:null, pared:null}, resultUrl:null, busy:false };
+let joinIdx = 0;
+
+// CAMBIO 5: Lógica de inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    initFromFirestore();
+});
+
+async function initFromFirestore() {
+    let attempts = 0;
+    while (typeof loadProductsFromFirestore === 'undefined' && attempts < 20) {
+        await new Promise(r => setTimeout(r, 100));
+        attempts++;
+    }
+
+    if (typeof loadProductsFromFirestore !== 'undefined') {
+        await loadProductsFromFirestore();
+        if (window.PLACAS_DB && window.PLACAS_DB.length > 0) PLACAS = window.PLACAS_DB;
+        if (window.JOINS_DB  && window.JOINS_DB.length  > 0) JOINS  = window.JOINS_DB;
+    }
+
+    // Inicialización de componentes UI
+    renderPlacas('iaPlacaRow',   id => iaSelectPlaca(id));
+    renderPlacas('rackPlacaRow', id => rackSelectPlaca(id));
+    updateJoin();
+    iaUpdateSurfLabel();
+    rackUpdateSurfLabel();
+    rackUpdateBtn();
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function setTab(tab) {
+    document.getElementById('tabIA').classList.toggle('hidden',   tab !== 'ia');
+    document.getElementById('tabRack').classList.toggle('hidden', tab !== 'rack');
+    document.getElementById('tabBtnIA').classList.toggle('active',   tab === 'ia');
+    document.getElementById('tabBtnRack').classList.toggle('active', tab === 'rack');
+}
+
+// ═══════════════════════════════════════════════
+// RENDER PLACAS
+// ═══════════════════════════════════════════════
+function renderPlacas(rowId, onSelect) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    row.innerHTML = PLACAS.map(p => `
+        <div id="${rowId}_${p.id}" class="placa-chip" onclick="(${onSelect.toString()})('${p.id}')">
+            <img src="${p.img}" class="w-20 h-20 object-cover block" onerror="this.src='https://placehold.co/80?text=${p.nombre}'">
+            <p class="text-[9px] text-center font-bold text-slate-600 py-1.5 px-1 bg-white truncate" style="max-width:80px">${p.nombre}</p>
+        </div>`).join('');
+}
+function setActiveChip(rowId, id) {
+    PLACAS.forEach(p => document.getElementById(`${rowId}_${p.id}`)?.classList.toggle('active', p.id === id));
+}
+
+// ═══════════════════════════════════════════════
+// MODO IA — FOTO
+// ═══════════════════════════════════════════════
+function iaHandlePhoto(e) {
+    const f = e.target.files[0]; if (!f) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const data = ev.target.result;
+        ia.b64 = data.split(',')[1]; ia.mime = f.type||'image/jpeg'; ia.url = data;
+        document.getElementById('iaPlaceholder').classList.add('hidden');
+        document.getElementById('iaPreviewWrap').classList.remove('hidden');
+        document.getElementById('iaPreviewImg').src = data;
+        const z = document.getElementById('iaUploadZone');
+        z.classList.add('has-img'); z.style.borderStyle='solid'; z.style.borderColor='#10b981';
+        iaUpdateBtn();
+    };
+    reader.readAsDataURL(f);
+}
+function iaClearPhoto() {
+    ia.b64=ia.mime=ia.url=null;
+    document.getElementById('iaPlaceholder').classList.remove('hidden');
+    document.getElementById('iaPreviewWrap').classList.add('hidden');
+    const z=document.getElementById('iaUploadZone');
+    z.classList.remove('has-img'); z.style.borderStyle='dashed'; z.style.borderColor='#cbd5e1';
+    iaUpdateBtn();
+}
+
+// ═══════════════════════════════════════════════
+// MODO IA — SUPERFICIES MÚLTIPLES
+// ═══════════════════════════════════════════════
+function iaSetActiveSurf(surf) {
+    ia.activeSurf = surf;
+    Object.keys(ia.selections).forEach(k => {
+        document.getElementById('iaSurf'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.toggle('active', k===surf);
+    });
+    iaUpdateSurfLabel();
+    // Reflejar placa actualmente seleccionada para esta superficie
+    const sel = ia.selections[surf];
+    setActiveChip('iaPlacaRow', sel?.id||'__none__');
+    document.getElementById('iaClearSurfBtn').classList.toggle('hidden', !sel);
+}
+function iaUpdateSurfLabel() {
+    document.getElementById('iaSurfLabel').textContent = SURF_NAMES[ia.activeSurf];
+}
+function iaSelectPlaca(id) {
+    const placa = PLACAS.find(p=>p.id===id);
+    ia.selections[ia.activeSurf] = placa;
+    setActiveChip('iaPlacaRow', id);
+    document.getElementById(`iaPlacaRow_${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    document.getElementById('iaClearSurfBtn').classList.remove('hidden');
+    // Actualizar dot de la superficie
+    const dot = document.getElementById('iaDot'+ia.activeSurf.charAt(0).toUpperCase()+ia.activeSurf.slice(1));
+    if (dot) { dot.style.backgroundImage=`url('${placa.img}')`; dot.style.backgroundSize='cover'; }
+    const surfBtn = document.getElementById('iaSurf'+ia.activeSurf.charAt(0).toUpperCase()+ia.activeSurf.slice(1));
+    surfBtn?.classList.add('has-placa');
+    iaUpdateCombo();
+    iaUpdateBtn();
+}
+function iaClearActiveSurf() {
+    ia.selections[ia.activeSurf] = null;
+    setActiveChip('iaPlacaRow', '__none__');
+    document.getElementById('iaClearSurfBtn').classList.add('hidden');
+    const dot = document.getElementById('iaDot'+ia.activeSurf.charAt(0).toUpperCase()+ia.activeSurf.slice(1));
+    if (dot) { dot.style.backgroundImage=''; }
+    document.getElementById('iaSurf'+ia.activeSurf.charAt(0).toUpperCase()+ia.activeSurf.slice(1))?.classList.remove('has-placa');
+    iaUpdateCombo();
+    iaUpdateBtn();
+}
+function iaClearAll() {
+    Object.keys(ia.selections).forEach(k => {
+        ia.selections[k] = null;
+        const dot = document.getElementById('iaDot'+k.charAt(0).toUpperCase()+k.slice(1));
+        if (dot) dot.style.backgroundImage='';
+        document.getElementById('iaSurf'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.remove('has-placa');
+    });
+    setActiveChip('iaPlacaRow','__none__');
+    document.getElementById('iaClearSurfBtn').classList.add('hidden');
+    iaUpdateCombo(); iaUpdateBtn();
+}
+function iaUpdateCombo() {
+    const entries = Object.entries(ia.selections).filter(([,v])=>v);
+    const wrap = document.getElementById('iaComboWrap');
+    wrap.classList.toggle('hidden', entries.length===0);
+    document.getElementById('iaComboList').innerHTML = entries.map(([surf,p])=>`
+        <div class="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+            <img src="${p.img}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-slate-100">
+            <div class="flex-1 min-w-0">
+                <p class="font-extrabold text-slate-700 text-xs">${SURF_NAMES[surf]}</p>
+                <p class="text-slate-400 text-[11px] truncate">${p.nombre}</p>
+            </div>
+            <button onclick="ia.activeSurf='${surf}';iaClearActiveSurf()" class="w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center text-xs active:scale-90 transition-transform border-none cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>`).join('');
+}
+function iaUpdateBtn() {
+    const hasSel = Object.values(ia.selections).some(v=>v);
+    const ok = ia.b64 && hasSel && !ia.busy;
+    const btn = document.getElementById('iaBtnGenerar');
+    btn.disabled = !ok;
+    btn.className = `w-full py-4 rounded-2xl font-extrabold text-sm transition-all active:scale-[.98] ${ok ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/25 cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`;
+    // Actualizar texto con resumen
+    if (ok) {
+        const count = Object.values(ia.selections).filter(v=>v).length;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar ${count} superficie${count>1?'s':''} · 1 crédito`;
+    } else {
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito`;
+    }
+}
+
+// ═══════════════════════════════════════════════
+// IA — GENERAR (prompt multi-superficie)
+// ═══════════════════════════════════════════════
+const IA_STEPS = [
+    {msg:'Analizando tu foto...',      sub:'Detectando superficies',          pct:15},
+    {msg:'Aplicando las placas...',    sub:'Procesando texturas',             pct:40},
+    {msg:'Reimaginando el espacio...', sub:'Manteniendo muebles y objetos',   pct:65},
+    {msg:'Ajustando iluminación...',   sub:'Sombras y reflejos realistas',    pct:85},
+    {msg:'Finalizando...',             sub:'Revisión de calidad',             pct:95},
+];
+
+async function iaGenerar() {
+    if (!ia.b64 || ia.busy) return;
+    const entries = Object.entries(ia.selections).filter(([,v])=>v);
+    if (!entries.length) return;
+
+    if (window.consumeCredit) { const ok=await window.consumeCredit(); if(!ok)return; }
+
+    ia.busy=true; iaUpdateBtn();
+    document.getElementById('iaGenOverlay').classList.remove('hidden');
+    document.getElementById('iaPlaceholder2').classList.add('hidden');
+
+    let si=0;
+    const iv=setInterval(()=>{
+        if(si<IA_STEPS.length){
+            const st=IA_STEPS[si];
+            document.getElementById('iaGenStep').textContent=st.msg;
+            document.getElementById('iaGenSub').textContent=st.sub;
+            document.getElementById('iaProgFill').style.width=st.pct+'%';
+            si++;
+        }
+    },1800);
+
+    try {
+        const rb64 = await iaCallGemini(entries);
+        clearInterval(iv);
+        document.getElementById('iaProgFill').style.width='100%';
+        await sleep(400);
+        iaShowResult(rb64, entries);
+    } catch(err) {
+        clearInterval(iv);
+        document.getElementById('iaGenOverlay').classList.add('hidden');
+        document.getElementById('iaPlaceholder2').classList.remove('hidden');
+        ia.busy=false; iaUpdateBtn();
+        if(window.refundCredit){await window.refundCredit();window.showToast?.('↩️ Crédito devuelto');}
+        setTimeout(()=>window.showToast?.('⚠️ '+(err.message||'Error').slice(0,80)),1500);
+        console.error(err);
+    }
+}
+
+async function iaCallGemini(entries) {
+    // Construir descripción de cada superficie
+    const surfLines = entries.map(([surf, p], i) =>
+        `- ${SURF_NAMES[surf].toUpperCase()}: aplicá EXACTAMENTE la textura de IMAGEN_REF_${i+1} (${p.nombre} — ${p.desc}) en ${SURF_DESCS[surf]}`
+    ).join('\n');
+
+    const refDesc = entries.map(([surf, p], i) =>
+        `IMAGEN_REF_${i+1}: textura "${p.nombre}" (${p.desc}) → usar en ${SURF_NAMES[surf].toLowerCase()}`
+    ).join('\n');
+
+    const prompt = `Eres un sistema de renderizado fotorrealista de interiores.
+
+Recibirás imágenes en este orden:
+- IMAGEN_AMBIENTE: foto del interior a modificar (primera imagen)
+${refDesc}
+
+INSTRUCCIONES:
+${surfLines}
+
+REGLAS ABSOLUTAS:
+1. Copiá FIELMENTE el patrón, color y veteado de cada IMAGEN_REF — NO uses texturas genéricas.
+2. Modificá ÚNICAMENTE las superficies indicadas. Todo lo demás queda IDÉNTICO.
+3. Respetá perspectiva 3D, geometría, iluminación y sombras de la foto original.
+4. Resultado fotorrealista profesional, mismas dimensiones que IMAGEN_AMBIENTE.
+Devolvé ÚNICAMENTE la imagen transformada.`;
+
+    // Separar imágenes locales (base64 ya disponible) vs URLs remotas (R2/CDN)
+    const CDN_HOST = 'cdn.michelinsoftwaresolutions.com.ar';
+    const remoteRefs = [];  // { surf, placa, url } — se resuelven en el servidor
+    const localRefs  = [];  // { surf, placa, b64 } — ya disponibles
+
+    for (const [surf, placa] of entries) {
+        const isRemote = placa.img.includes(CDN_HOST) || placa.img.startsWith('http');
+        if (isRemote) {
+            remoteRefs.push({ surf, placa, url: placa.img });
+        } else {
+            const b64 = await imageUrlToBase64(placa.img);
+            if (b64) localRefs.push({ surf, placa, b64 });
+            else remoteRefs.push({ surf, placa, url: placa.img }); // fallback
+        }
+    }
+
+    // Si hay URLs remotas, delegar TODO al proxy para que él descargue
+    if (remoteRefs.length > 0) {
+        const ambientResized = await resizeAmbientPhoto(1024) || ia.b64;
+        const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'proxy-fetch',
+                ambient: { mime: 'image/jpeg', data: ambientResized },
+                refs: entries.map(([surf, placa]) => ({
+                    surf,
+                    nombre: placa.nombre,
+                    desc: placa.desc,
+                    url: placa.img
+                })),
+                prompt
+            })
+        });
+        if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+        const data = await res.json();
+        const rparts = data?.candidates?.[0]?.content?.parts || [];
+        for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
+        const txt = rparts.find(p=>p.text);
+        throw new Error(txt?.text?.slice(0,120)||'Sin imagen en la respuesta');
+    }
+
+    // Todas las imágenes son locales — redimensionar y armar el request
+    const ambientB64 = await resizeAmbientPhoto(1024) || ia.b64;
+    const parts = [
+        { text: prompt },
+        { inline_data: { mime_type: 'image/jpeg', data: ambientB64 } },
+        ...localRefs.map(r => ({ inline_data: { mime_type: 'image/jpeg', data: r.b64 } })),
+    ];
+
+    const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { responseModalities: ['IMAGE','TEXT'], temperature: 0.1 }
+        })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${res.status}`); }
+    const data = await res.json();
+    const rparts = data?.candidates?.[0]?.content?.parts || [];
+    for (const p of rparts) { const b = p?.inline_data?.data||p?.inlineData?.data; if(b) return b; }
+    const txt = rparts.find(p=>p.text);
+    throw new Error(txt?.text?.slice(0,120)||'Sin imagen en la respuesta');
+}
+
+function iaShowResult(rb64, entries) {
+    const url=`data:image/png;base64,${rb64}`;
+    ia.resultUrl=url;
+    const img=document.getElementById('iaResultImg');
+    img.src=url;
+    img.onload=()=>{
+        document.getElementById('iaGenOverlay').classList.add('hidden');
+        img.classList.remove('hidden');
+        document.getElementById('iaResultBadge').classList.remove('hidden');
+        const tag=document.getElementById('iaResultTag');
+        tag.textContent=entries.map(([s,p])=>`${SURF_NAMES[s]}: ${p.nombre}`).join(' · ');
+        tag.classList.remove('hidden');
+        iaSetupCompare();
+        document.getElementById('iaResultActions').classList.remove('hidden');
+        ia.busy=false; iaUpdateBtn();
+        window.showToast?.('✨ ¡Visualización lista!');
+    };
+}
+function iaSetupCompare() {
+    if(!ia.url||!ia.resultUrl)return;
+    document.getElementById('iaCompBefore').src=ia.url;
+    document.getElementById('iaCompAfter').src=ia.resultUrl;
+    document.getElementById('iaCompareSection').classList.remove('hidden');
+    const wrap=document.getElementById('iaCompareWrap'),
+          handle=document.getElementById('iaCompHandle'),
+          ov=document.getElementById('iaCompOv');
+    let drag=false;
+    const set=cx=>{const r=wrap.getBoundingClientRect();let p=Math.max(.02,Math.min(.98,(cx-r.left)/r.width));handle.style.left=(p*100)+'%';ov.style.width=(p*100)+'%';};
+    wrap.addEventListener('mousedown',e=>{drag=true;set(e.clientX);});
+    wrap.addEventListener('touchstart',e=>{drag=true;set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener('mousemove',e=>{if(drag)set(e.clientX);});
+    document.addEventListener('touchmove',e=>{if(drag)set(e.touches[0].clientX);},{passive:true});
+    document.addEventListener('mouseup',()=>drag=false);
+    document.addEventListener('touchend',()=>drag=false);
+}
+async function iaDownload(){if(!ia.resultUrl)return;const a=document.createElement('a');a.href=ia.resultUrl;a.download='steel-deco-visualizacion.png';a.click();window.showToast?.('📥 Guardada');}
+async function iaShare(){if(!ia.resultUrl)return;try{const blob=(await fetch(ia.resultUrl)).blob();const f=new File([await blob],'steel-deco.png',{type:'image/png'});if(navigator.share&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Steel & Deco'});else iaDownload();}catch{iaDownload();}}
+function iaReset(){
+    ia.resultUrl=null;
+    document.getElementById('iaResultImg').classList.add('hidden');
+    document.getElementById('iaResultImg').src='';
+    document.getElementById('iaResultBadge').classList.add('hidden');
+    document.getElementById('iaResultTag').classList.add('hidden');
+    document.getElementById('iaResultActions').classList.add('hidden');
+    document.getElementById('iaCompareSection').classList.add('hidden');
+    document.getElementById('iaPlaceholder2').classList.remove('hidden');
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════════
+// RACK TV — ESTADO
+// ═══════════════════════════════════════════════
+const RACK_SURF_NAMES = { panel:'Panel TV', pared:'Pared lateral' };
+const RACK_SURF_DESCS = {
     panel: 'el panel decorativo detrás del televisor, en su proporción exacta. NO toques la pared lateral ni el piso.',
     pared: 'la pared visible a los costados del rack (distancia considerable a cada lado). NO toques el panel del TV ni el piso.',
 };
