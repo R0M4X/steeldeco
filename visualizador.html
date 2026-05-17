@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" href="image.png">
-    <link rel="apple-touch-icon" href="image.png">
-    <title>HARIA - Visualizador</title>
+    <title>Steel & Deco - Visualizador</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
@@ -227,101 +225,107 @@
             </div>
         </div>
     </div>
-    
+
     <div id="tabRack" class="hidden space-y-4 fade-up">
-    
-      <!-- STAGE con foto real -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="p-3">
-          <div class="rack-stage" id="rackStage" style="aspect-ratio:543/543;position:relative;overflow:hidden;border-radius:16px;">
-    
-            <!-- Foto base del ambiente (fija) -->
-            <img src="img/rack-bg.jpg" id="rackBgPhoto"
-                 class="absolute inset-0 w-full h-full object-cover"
-                 onerror="this.style.display='none'">
-    
-            <!-- Capa de textura para la PARED — recorte aproximado al área de pared blanca -->
-            <!-- La pared ocupa aprox x:0% y:0% w:100% h:72% en la foto -->
-            <div id="rackWallTexture" class="absolute"
-                 style="
-                   top:0; left:0; right:0; height:72%;
-                   background-size:80px 80px;
-                   background-repeat:repeat;
-                   mix-blend-mode:multiply;
-                   opacity:0;
-                   transition:opacity .3s;
-                 ">
+
+    <!-- FOTO FIJA DEL RACK -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center gap-2">
+            <i class="fa-solid fa-tv text-brand-600 text-sm"></i>
+            <p class="font-bold text-slate-700 text-sm">Visualizador Rack TV con IA</p>
+        </div>
+        <div class="p-4">
+            <div class="relative rounded-2xl overflow-hidden bg-slate-100" style="aspect-ratio:4/3">
+                <!-- Foto base fija del rack -->
+                <img id="rackBgImg" src="img/rack-bg.jpg"
+                     class="w-full h-full object-cover rounded-2xl"
+                     onerror="this.style.background='#1e293b';this.style.display='block'">
+                <!-- Overlay de generación -->
+                <div id="rackGenOverlay" class="hidden absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(6,78,59,.9)">
+                    <div class="gen-ring"></div>
+                    <p class="text-white font-bold text-sm" id="rackGenStep">Analizando...</p>
+                    <div class="prog-bar"><div class="prog-fill" id="rackProgFill" style="width:5%"></div></div>
+                    <p class="text-green-300 text-[11px]" id="rackGenSub">Preparando</p>
+                </div>
+                <!-- Resultado IA -->
+                <img id="rackResultImg" class="hidden absolute inset-0 w-full h-full object-cover rounded-2xl">
+                <div id="rackResultBadge" class="hidden absolute top-3 left-3 bg-brand-900/80 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full">✨ IA Generado</div>
+                <!-- Botón reset -->
+                <button id="rackResetBtn" onclick="rackIAReset()" class="hidden absolute top-3 right-3 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center text-xs active:scale-90 transition-transform">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
             </div>
-    
-            <!-- Capa de textura para el PISO — parte inferior -->
-            <div id="rackFloorTexture" class="absolute"
-                 style="
-                   bottom:0; left:0; right:0; height:28%;
-                   background-size:60px 60px;
-                   background-repeat:repeat;
-                   mix-blend-mode:multiply;
-                   opacity:0;
-                   transition:opacity .3s;
-                 ">
+        </div>
+        <!-- Comparador rack -->
+        <div id="rackCompareSection" class="hidden px-4 pb-4">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">← Deslizá para comparar →</p>
+            <div class="compare-wrap" id="rackCompareWrap">
+                <img id="rackCompAfter" src="">
+                <div class="compare-ov" id="rackCompOv" style="width:50%"><img id="rackCompBefore" src="img/rack-bg.jpg"></div>
+                <div class="compare-handle" id="rackCompHandle" style="left:50%"></div>
             </div>
-    
-            <!-- Indicador de combinación activa -->
-            <div class="absolute top-3 left-3 flex gap-1.5" id="rackDots"></div>
-    
-          </div>
         </div>
-    
-        <!-- Leyenda -->
-        <div class="px-4 pb-3 flex items-center justify-between">
-          <p class="text-[10px] text-slate-400 flex items-center gap-1">
-            <i class="fa-solid fa-info-circle text-[9px]"></i> Rack flotante con estantes
-          </p>
-          <span id="rackBlendNote" class="hidden text-[10px] text-brand-600 font-bold bg-brand-50 px-2 py-0.5 rounded-full">Vista previa activa</span>
-        </div>
-      </div>
-    
-      <!-- SELECTOR SUPERFICIE RACK -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-4 pt-3 pb-2">
-          <div class="rack-surf-pill">
-            <button class="rack-surf-tab active" id="rTabPanel" onclick="rackSetSurf('panel')">
-              <i class="fa-solid fa-rectangle-list mr-1"></i>Panel
-            </button>
-            <button class="rack-surf-tab" id="rTabPared" onclick="rackSetSurf('pared')">
-              <i class="fa-solid fa-wall mr-1"></i>Pared
-            </button>
-            <button class="rack-surf-tab" id="rTabSuelo" onclick="rackSetSurf('suelo')">
-              <i class="fa-solid fa-border-all mr-1"></i>Piso
-            </button>
-          </div>
-        </div>
-        <div class="px-4 pb-1 flex items-center justify-between">
-          <p class="text-[11px] text-slate-400" id="rackSurfDesc">Placa para el panel del rack</p>
-          <button id="rackClearBtn" onclick="rackClearSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg">Quitar</button>
-        </div>
-      </div>
-    
-      <!-- PLACAS RACK -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-5 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between">
-          <p class="font-bold text-slate-700 text-sm">Placa para <span id="rackForLabel" class="text-brand-700">Panel</span></p>
-          <span id="rackSelectedName" class="hidden text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg"></span>
-        </div>
-        <div class="px-4 py-3">
-          <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="rackPlacaRow"></div>
-        </div>
-      </div>
-    
-      <!-- COMBO RACK -->
-      <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Combinación actual
-        </p>
-        <div id="rackComboList" class="space-y-1.5"></div>
-      </div>
-    
     </div>
 
+    <!-- SELECTOR SUPERFICIE RACK -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-4 pt-3 pb-2">
+            <div class="rack-surf-pill">
+                <button class="rack-surf-tab active" id="rTabPlacaTV" onclick="rackSetSurf('placaTV')">
+                    <i class="fa-solid fa-tv mr-1"></i>Placa TV
+                </button>
+                <button class="rack-surf-tab" id="rTabPared" onclick="rackSetSurf('pared')">
+                    <i class="fa-solid fa-wall mr-1"></i>Pared
+                </button>
+            </div>
+        </div>
+        <div class="px-4 pb-2">
+            <p class="text-[11px] text-slate-400" id="rackSurfDesc">Panel detrás del TV</p>
+        </div>
+    </div>
+
+    <!-- PLACAS RACK -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 pt-4 pb-2 border-b border-slate-50 flex items-center justify-between">
+            <p class="font-bold text-slate-700 text-sm">Placa para <span id="rackForLabel" class="text-brand-700">Panel TV</span></p>
+            <div class="flex items-center gap-2">
+                <span id="rackSelectedName" class="hidden text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg"></span>
+                <button id="rackClearBtn" onclick="rackClearSurf()" class="hidden text-[10px] text-red-400 font-semibold bg-red-50 px-2 py-1 rounded-lg">Quitar</button>
+            </div>
+        </div>
+        <div class="px-4 py-3">
+            <div class="flex gap-2.5 overflow-x-auto hide-scroll pb-1" id="rackPlacaRow"></div>
+        </div>
+    </div>
+
+    <!-- COMBO RACK -->
+    <div id="rackComboWrap" class="hidden bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <i class="fa-solid fa-palette text-brand-600 text-[11px]"></i> Tu combinación
+        </p>
+        <div id="rackComboList" class="space-y-1.5"></div>
+    </div>
+
+    <!-- BTN GENERAR RACK -->
+    <button id="rackBtnGenerar" onclick="rackIAGenerar()" disabled
+        class="w-full py-4 rounded-2xl font-extrabold text-sm bg-slate-200 text-slate-400 cursor-not-allowed transition-all active:scale-[.98]">
+        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito
+    </button>
+
+    <!-- ACCIONES RACK -->
+    <div id="rackResultActions" class="hidden flex gap-2">
+        <button onclick="rackDownload()" class="flex-1 flex items-center justify-center gap-2 bg-brand-900 text-white text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+            <i class="fa-solid fa-download"></i> Guardar
+        </button>
+        <button onclick="rackShare()" class="flex-1 flex items-center justify-center gap-2 bg-slate-100 text-slate-700 text-sm font-bold py-3 rounded-xl active:scale-95 transition-transform">
+            <i class="fa-solid fa-share-nodes"></i> Compartir
+        </button>
+        <button onclick="rackIAReset()" class="flex items-center justify-center bg-slate-100 text-slate-700 text-sm font-bold py-3 px-4 rounded-xl active:scale-95 transition-transform">
+            <i class="fa-solid fa-rotate-right"></i>
+        </button>
+    </div>
+
+</div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-5 pt-4 pb-3 border-b border-slate-50">
@@ -405,6 +409,7 @@ async function initFromFirestore() {
     // Inicialización de componentes UI
     renderPlacas('iaPlacaRow',   id => iaSelectPlaca(id));
     renderPlacas('rackPlacaRow', id => rackSelectPlaca(id));
+    rackSetSurf('placaTV'); // init superficie rack
     updateJoin();
     iaUpdateSurfLabel();
 }
@@ -736,109 +741,326 @@ function iaReset(){
 }
 
 // ═══════════════════════════════════════════════
-// RACK TV
+// RACK TV — IA
 // ═══════════════════════════════════════════════
-const RACK_DESCS = {panel:'Placa para el panel del rack',pared:'Placa para la pared del fondo',suelo:'Placa para el piso'};
-const RACK_LABELS= {panel:'Panel',pared:'Pared fondo',suelo:'Piso'};
+const RACK_SURF_LABELS = {
+    placaTV: 'Panel TV',
+    pared:   'Pared lateral'
+};
+const RACK_SURF_DESCS = {
+    placaTV: 'Panel detrás del TV',
+    pared:   'Pared a los costados del rack'
+};
+const rack = {
+    activeSurf: 'placaTV',
+    selections: { placaTV: null, pared: null },
+    resultUrl:  null,
+    busy:       false
+};
 
-function rackSetSurf(surf){
-    rack.activeSurf=surf;
-    ['panel','pared','suelo'].forEach(k=>{
-        document.getElementById('rTab'+k.charAt(0).toUpperCase()+k.slice(1))?.classList.toggle('active',k===surf);
+function rackSetSurf(surf) {
+    rack.activeSurf = surf;
+    ['placaTV','pared'].forEach(k => {
+        const id = k === 'placaTV' ? 'rTabPlacaTV' : 'rTabPared';
+        document.getElementById(id)?.classList.toggle('active', k === surf);
     });
-    document.getElementById('rackSurfDesc').textContent=RACK_DESCS[surf];
-    document.getElementById('rackForLabel').textContent=RACK_LABELS[surf];
-    const sel=rack.selections[surf];
-    setActiveChip('rackPlacaRow',sel?.id||'__none__');
-    const nm=document.getElementById('rackSelectedName');
-    nm.textContent=sel?.nombre||''; sel?nm.classList.remove('hidden'):nm.classList.add('hidden');
-    document.getElementById('rackClearBtn').classList.toggle('hidden',!sel);
+    document.getElementById('rackSurfDesc').textContent = RACK_SURF_DESCS[surf];
+    document.getElementById('rackForLabel').textContent = RACK_SURF_LABELS[surf];
+    const sel = rack.selections[surf];
+    setActiveChip('rackPlacaRow', sel?.id || '__none__');
+    const nm = document.getElementById('rackSelectedName');
+    nm.textContent = sel?.nombre || ''; sel ? nm.classList.remove('hidden') : nm.classList.add('hidden');
+    document.getElementById('rackClearBtn').classList.toggle('hidden', !sel);
 }
-function rackSelectPlaca(id){
-    const p=PLACAS.find(x=>x.id===id);
-    rack.selections[rack.activeSurf]=p;
-    setActiveChip('rackPlacaRow',id);
+
+function rackSelectPlaca(id) {
+    const p = (window.PLACAS_DB && window.PLACAS_DB.length > 0 ? window.PLACAS_DB : PLACAS).find(x => x.id === id);
+    if (!p) return;
+    rack.selections[rack.activeSurf] = p;
+    setActiveChip('rackPlacaRow', id);
     document.getElementById(`rackPlacaRow_${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-    const nm=document.getElementById('rackSelectedName');
-    nm.textContent=p.nombre; nm.classList.remove('hidden');
+    const nm = document.getElementById('rackSelectedName');
+    nm.textContent = p.nombre; nm.classList.remove('hidden');
     document.getElementById('rackClearBtn').classList.remove('hidden');
-    applyRack(); updateRackCombo();
+    updateRackCombo();
+    rackUpdateBtn();
 }
-function rackClearSurf(){
-    rack.selections[rack.activeSurf]=null;
-    setActiveChip('rackPlacaRow','__none__');
+
+function rackClearSurf() {
+    rack.selections[rack.activeSurf] = null;
+    setActiveChip('rackPlacaRow', '__none__');
     document.getElementById('rackSelectedName').classList.add('hidden');
     document.getElementById('rackClearBtn').classList.add('hidden');
-    applyRack(); updateRackCombo();
-}
-// ============================================================
-// PARCHE visualizador.html — funciones Rack TV
-// Reemplazá la función applyRack() completa
-// ============================================================
-
-function applyRack() {
-    const ps = rack.selections.panel;
-    const ws = rack.selections.pared;
-    const ss = rack.selections.suelo;
-
-    // ── Pared ──────────────────────────────────────────────
-    const wallTex = document.getElementById('rackWallTexture');
-    if (wallTex) {
-        if (ws) {
-            wallTex.style.backgroundImage = `url('${ws.img}')`;
-            wallTex.style.opacity = '0.55';
-        } else {
-            wallTex.style.backgroundImage = '';
-            wallTex.style.opacity = '0';
-        }
-    }
-
-    // ── Piso ───────────────────────────────────────────────
-    const floorTex = document.getElementById('rackFloorTexture');
-    if (floorTex) {
-        if (ss) {
-            floorTex.style.backgroundImage = `url('${ss.img}')`;
-            floorTex.style.opacity = '0.6';
-        } else {
-            floorTex.style.backgroundImage = '';
-            floorTex.style.opacity = '0';
-        }
-    }
-
-    // ── Panel (todavía no hay superficie en la foto para el rack)
-    // Se muestra solo en el combo como referencia visual
-    // Si en el futuro se agrega una foto con el panel visible, se puede agregar acá
-
-    // ── Indicador de preview activo ────────────────────────
-    const note = document.getElementById('rackBlendNote');
-    if (note) {
-        const anyActive = ws || ss || ps;
-        note.classList.toggle('hidden', !anyActive);
-    }
-
-    // ── Dots resumen ───────────────────────────────────────
-    const dots = document.getElementById('rackDots');
-    if (dots) {
-        dots.innerHTML = Object.entries(rack.selections)
-            .filter(([, v]) => v)
-            .map(([k, p]) =>
-                `<div style="width:20px;height:20px;border-radius:6px;background-image:url('${p.img}');background-size:cover;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)" title="${RACK_LABELS[k]}: ${p.nombre}"></div>`
-            ).join('');
-    }
+    updateRackCombo();
+    rackUpdateBtn();
 }
 
-function updateRackCombo(){
-    const entries=Object.entries(rack.selections).filter(([,v])=>v);
-    document.getElementById('rackComboWrap').classList.toggle('hidden',entries.length===0);
-    document.getElementById('rackComboList').innerHTML=entries.map(([k,p])=>`
+function updateRackCombo() {
+    const entries = Object.entries(rack.selections).filter(([,v]) => v);
+    document.getElementById('rackComboWrap').classList.toggle('hidden', entries.length === 0);
+    document.getElementById('rackComboList').innerHTML = entries.map(([k,p]) => `
         <div class="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-            <img src="${p.img}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-slate-100">
+            <img src="${p.img || p.imagen}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-slate-100">
             <div class="flex-1 min-w-0">
-                <p class="font-extrabold text-slate-700 text-xs">${RACK_LABELS[k]}</p>
+                <p class="font-extrabold text-slate-700 text-xs">${RACK_SURF_LABELS[k]}</p>
                 <p class="text-slate-400 text-[11px] truncate">${p.nombre}</p>
             </div>
             <button onclick="rack.activeSurf='${k}';rackClearSurf()" class="w-7 h-7 rounded-full bg-red-50 text-red-400 flex items-center justify-center text-xs border-none cursor-pointer active:scale-90"><i class="fa-solid fa-xmark"></i></button>
         </div>`).join('');
+}
+
+function rackUpdateBtn() {
+    const hasSel = Object.values(rack.selections).some(v => v);
+    const ok = hasSel && !rack.busy;
+    const btn = document.getElementById('rackBtnGenerar');
+    btn.disabled = !ok;
+    btn.className = `w-full py-4 rounded-2xl font-extrabold text-sm transition-all active:scale-[.98] ${ok ? 'bg-brand-900 text-white shadow-lg shadow-brand-900/25 cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`;
+    if (ok) {
+        const count = Object.values(rack.selections).filter(v => v).length;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar ${count} superficie${count>1?'s':''} · 1 crédito`;
+    } else {
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generar con IA · 1 crédito`;
+    }
+}
+
+// ── Cargar la foto del rack como base64 ──
+async function getRackPhotoB64() {
+    try {
+        const res = await fetch('img/rack-bg.jpg');
+        const blob = await res.blob();
+        return await new Promise(ok => {
+            const r = new FileReader();
+            r.onload = () => ok(r.result.split(',')[1]);
+            r.readAsDataURL(blob);
+        });
+    } catch { return null; }
+}
+
+// ── GENERAR ──
+const RACK_IA_STEPS = [
+    {msg:'Analizando el rack...',     sub:'Detectando superficies',      pct:15},
+    {msg:'Aplicando la placa TV...',  sub:'Ajustando panel y marco',     pct:40},
+    {msg:'Reimaginando el espacio...', sub:'Manteniendo luces y objetos', pct:65},
+    {msg:'Ajustando iluminación...',  sub:'Sombras y reflejos realistas', pct:85},
+    {msg:'Finalizando...',            sub:'Revisión de calidad',          pct:95},
+];
+
+async function rackIAGenerar() {
+    if (rack.busy) return;
+    const entries = Object.entries(rack.selections).filter(([,v]) => v);
+    if (!entries.length) return;
+
+    if (window.consumeCredit) { const ok = await window.consumeCredit(); if (!ok) return; }
+
+    rack.busy = true; rackUpdateBtn();
+    document.getElementById('rackGenOverlay').classList.remove('hidden');
+    document.getElementById('rackResultImg').classList.add('hidden');
+    document.getElementById('rackResultBadge').classList.add('hidden');
+    document.getElementById('rackResultActions').classList.add('hidden');
+    document.getElementById('rackCompareSection').classList.add('hidden');
+
+    let si = 0;
+    const iv = setInterval(() => {
+        if (si < RACK_IA_STEPS.length) {
+            const st = RACK_IA_STEPS[si];
+            document.getElementById('rackGenStep').textContent = st.msg;
+            document.getElementById('rackGenSub').textContent  = st.sub;
+            document.getElementById('rackProgFill').style.width = st.pct + '%';
+            si++;
+        }
+    }, 1800);
+
+    try {
+        // Obtener foto del rack como base64
+        const rackB64 = await getRackPhotoB64();
+        if (!rackB64) throw new Error('No se pudo cargar la foto del rack');
+
+        const rb64 = await rackCallGemini(entries, rackB64);
+        clearInterval(iv);
+        document.getElementById('rackProgFill').style.width = '100%';
+        await sleep(400);
+        rackShowResult(rb64);
+    } catch(err) {
+        clearInterval(iv);
+        document.getElementById('rackGenOverlay').classList.add('hidden');
+        rack.busy = false; rackUpdateBtn();
+        if (window.refundCredit) { await window.refundCredit(); window.showToast?.('↩️ Crédito devuelto'); }
+        setTimeout(() => window.showToast?.('⚠️ ' + (err.message||'Error').slice(0,80)), 1500);
+        console.error(err);
+    }
+}
+
+async function rackCallGemini(entries, rackB64) {
+    // Construir prompt específico para el rack
+    const placaTV = entries.find(([k]) => k === 'placaTV')?.[1];
+    const pared   = entries.find(([k]) => k === 'pared')?.[1];
+
+    let surfLines = '';
+    let refDesc   = '';
+    let imgIdx    = 2;
+
+    if (placaTV) {
+        surfLines += `- PLACA TV: aplicá EXACTAMENTE la textura de IMAGEN_REF_${imgIdx} en el PANEL rectangular que rodea y está detrás del televisor (el rectángulo blanco/madera donde está montada la pantalla). Solo ese panel, no la pantalla ni el resto.
+`;
+        refDesc   += `IMAGEN_REF_${imgIdx}: textura "${placaTV.nombre}" — ${placaTV.desc} → aplicar SOLO en el panel detrás del TV
+`;
+        imgIdx++;
+    }
+    if (pared) {
+        surfLines += `- PARED: aplicá EXACTAMENTE la textura de IMAGEN_REF_${imgIdx} en las zonas de PARED DESNUDA visibles a los LADOS del rack/mueble (la pared beige/blanca que se ve a izquierda y derecha del conjunto de muebles). NO toques el mueble, el panel TV, la pantalla ni el piso.
+`;
+        refDesc   += `IMAGEN_REF_${imgIdx}: textura "${pared.nombre}" — ${pared.desc} → aplicar SOLO en pared lateral visible
+`;
+        imgIdx++;
+    }
+
+    const prompt = `Eres un sistema de renderizado fotorrealista de interiores especializado en muebles y racks de TV.
+
+Recibirás imágenes en este orden:
+- IMAGEN_AMBIENTE: foto del rack TV a modificar (primera imagen)
+${refDesc}
+INSTRUCCIONES PRECISAS:
+${surfLines}
+REGLAS ABSOLUTAS:
+1. Copiá FIELMENTE el patrón, color y veteado de cada IMAGEN_REF — NO uses texturas genéricas.
+2. Modificá ÚNICAMENTE las superficies especificadas arriba con extrema precisión.
+3. La PANTALLA del TV queda NEGRA e IDÉNTICA — no la toques bajo ninguna circunstancia.
+4. Los muebles, estantes, objetos decorativos, luces LED y piso quedan IDÉNTICOS.
+5. Respetá perspectiva 3D, geometría, iluminación y sombras de la foto original.
+6. Resultado fotorrealista profesional, mismas dimensiones que IMAGEN_AMBIENTE.
+Devolvé ÚNICAMENTE la imagen transformada.`;
+
+    // Construir partes con referencias
+    const DB = window.PLACAS_DB && window.PLACAS_DB.length > 0 ? window.PLACAS_DB : PLACAS;
+    const refs = entries.map(([, placa]) => ({
+        nombre: placa.nombre,
+        desc:   placa.desc || placa.acabado || '',
+        url:    placa.img || placa.imagen || ''
+    }));
+
+    // Determinar si hay URLs remotas (R2)
+    const CDN_HOST = 'cdn.michelinsoftwaresolutions.com.ar';
+    const hasRemote = refs.some(r => r.url.includes(CDN_HOST) || r.url.startsWith('http'));
+
+    if (hasRemote) {
+        // Modo proxy-fetch: Worker descarga las referencias
+        const ambientResized = await resizeImageToBase64(`data:image/jpeg;base64,${rackB64}`, 1024, 0.88) || rackB64;
+        const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'proxy-fetch',
+                ambient: { mime: 'image/jpeg', data: ambientResized },
+                refs,
+                prompt
+            })
+        });
+        if (!res.ok) { const e = await res.json().catch(()=>({}))); throw new Error(e?.error?.message || `HTTP ${res.status}`); }
+        const data = await res.json();
+        const rparts = data?.candidates?.[0]?.content?.parts || [];
+        for (const p of rparts) { const b = p?.inline_data?.data || p?.inlineData?.data; if (b) return b; }
+        const txt = rparts.find(p => p.text);
+        throw new Error(txt?.text?.slice(0,120) || 'Sin imagen en la respuesta');
+    }
+
+    // Modo local: convertir referencias a base64 acá
+    const refParts = [];
+    for (const ref of refs) {
+        const b64 = await imageUrlToBase64(ref.url, 512);
+        if (b64) refParts.push({ inline_data: { mime_type: 'image/jpeg', data: b64 } });
+    }
+
+    const ambientResized = await resizeImageToBase64(`data:image/jpeg;base64,${rackB64}`, 1024, 0.88) || rackB64;
+    const parts = [
+        { text: prompt },
+        { inline_data: { mime_type: 'image/jpeg', data: ambientResized } },
+        ...refParts
+    ];
+
+    const res = await fetch('https://steel-deco-r2.michelinsoftwaresolutions.workers.dev/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { responseModalities: ['IMAGE','TEXT'], temperature: 0.1 }
+        })
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({}))); throw new Error(e?.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const rparts = data?.candidates?.[0]?.content?.parts || [];
+    for (const p of rparts) { const b = p?.inline_data?.data || p?.inlineData?.data; if (b) return b; }
+    const txt = rparts.find(p => p.text);
+    throw new Error(txt?.text?.slice(0,120) || 'Sin imagen en la respuesta');
+}
+
+function rackShowResult(rb64) {
+    const url = `data:image/png;base64,${rb64}`;
+    rack.resultUrl = url;
+    const img = document.getElementById('rackResultImg');
+    img.src = url;
+    img.onload = () => {
+        document.getElementById('rackGenOverlay').classList.add('hidden');
+        img.classList.remove('hidden');
+        document.getElementById('rackResultBadge').classList.remove('hidden');
+        document.getElementById('rackResetBtn').classList.remove('hidden');
+        document.getElementById('rackResultActions').classList.remove('hidden');
+        // Setup comparador
+        document.getElementById('rackCompAfter').src = url;
+        document.getElementById('rackCompBefore').src = 'img/rack-bg.jpg';
+        document.getElementById('rackCompareSection').classList.remove('hidden');
+        setupRackCompare();
+        rack.busy = false; rackUpdateBtn();
+        window.showToast?.('✨ ¡Visualización lista!');
+    };
+}
+
+function setupRackCompare() {
+    const wrap   = document.getElementById('rackCompareWrap');
+    const handle = document.getElementById('rackCompHandle');
+    const ov     = document.getElementById('rackCompOv');
+    let drag = false;
+    const set = cx => {
+        const r = wrap.getBoundingClientRect();
+        const p = Math.max(.02, Math.min(.98, (cx - r.left) / r.width));
+        handle.style.left = (p*100) + '%';
+        ov.style.width    = (p*100) + '%';
+    };
+    wrap.addEventListener('mousedown',  e => { drag=true; set(e.clientX); });
+    wrap.addEventListener('touchstart', e => { drag=true; set(e.touches[0].clientX); }, {passive:true});
+    document.addEventListener('mousemove',  e => { if(drag) set(e.clientX); });
+    document.addEventListener('touchmove',  e => { if(drag) set(e.touches[0].clientX); }, {passive:true});
+    document.addEventListener('mouseup',  () => drag=false);
+    document.addEventListener('touchend', () => drag=false);
+}
+
+function rackIAReset() {
+    rack.resultUrl = null;
+    document.getElementById('rackResultImg').classList.add('hidden');
+    document.getElementById('rackResultImg').src = '';
+    document.getElementById('rackResultBadge').classList.add('hidden');
+    document.getElementById('rackResetBtn').classList.add('hidden');
+    document.getElementById('rackResultActions').classList.add('hidden');
+    document.getElementById('rackCompareSection').classList.add('hidden');
+    document.getElementById('rackGenOverlay').classList.add('hidden');
+}
+
+async function rackDownload() {
+    if (!rack.resultUrl) return;
+    const a = document.createElement('a');
+    a.href = rack.resultUrl;
+    a.download = 'steel-deco-rack.png';
+    a.click();
+    window.showToast?.('📥 Guardada');
+}
+
+async function rackShare() {
+    if (!rack.resultUrl) return;
+    try {
+        const blob = await (await fetch(rack.resultUrl)).blob();
+        const f = new File([blob], 'steel-deco-rack.png', {type:'image/png'});
+        if (navigator.share && navigator.canShare({files:[f]})) await navigator.share({files:[f], title:'Steel & Deco Rack TV'});
+        else rackDownload();
+    } catch { rackDownload(); }
 }
 
 // ═══════════════════════════════════════════════
