@@ -1,6 +1,5 @@
 // layout.js — Steel & Deco · Firebase Auth Real + Créditos + Nav
 // IMPORTANTE: cargar con <script type="module" src="layout.js"></script>
-<script src="mss-footer.js"></script>
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
     getAuth, GoogleAuthProvider, signInWithPopup,
